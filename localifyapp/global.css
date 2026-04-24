@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 2 6 23;      
+    --card: 15 23 42;         
+    --primary: 192 132 252;   
+    --accent: 34 211 238;     
+    --text: 248 250 252;      
+  }
+}
+
+
+@native {
+  .text-primary {
+    color: rgb(192, 132, 252);
+  }
+  .bg-primary {
+    background-color: rgb(192, 132, 252);
+  }
+  .text-textColor {
+    color: rgb(248, 250, 252);
+  }
+  .bg-background {
+    background-color: rgb(2, 6, 23);
+  }
+}
