@@ -1,5 +1,5 @@
 import "@/global.css"
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFonts } from 'expo-font';
 import { 
@@ -11,6 +11,13 @@ import {
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
+import { ActivityIndicator } from "react-native";
+
+
+import {SQLiteProvider, openDatabaseAsync, openDatabaseSync} from 'expo-sqlite'
+import { drizzle } from "drizzle-orm/expo-sqlite"
+import {useMigrations} from "drizzle-orm/expo-sqlite/migrator"
+import migrations from "@/drizzle/migrations"
 
 export {
   ErrorBoundary,
@@ -48,11 +55,27 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
+export const DATABASE_NAME = 'Localify'
+
 function RootLayoutNav() {
+
+  const expoDb = openDatabaseSync(DATABASE_NAME)
+  const db = drizzle(expoDb)
+  const {success, error} = useMigrations(db, migrations)
+
   return (
+    <Suspense fallback={<ActivityIndicator size={"large"}/>}>
+      <SQLiteProvider 
+        databaseName={DATABASE_NAME} 
+        useSuspense
+        options={{ enableChangeListener: true }}>
+
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
     </Stack>
+    </SQLiteProvider>
+    </Suspense>
   );
 }
+

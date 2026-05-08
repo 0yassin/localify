@@ -1,25 +1,17 @@
-import {getplaylists, addPlaylist} from '@/storage'
 import Card from '@/components/Card';
 import {Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { Shadow } from 'react-native-shadow-2';
+
+
 export default function TabOneScreen() {
   const [urls, setUrls] = useState([]);
   const [inputText, setInputText] = useState('');
   const [modalVisible, setModalVisible] = useState(false)
 
-  useEffect(() => {
-    const load = async () => {
-      const saved = await getplaylists();
-      setUrls(saved);
-    };
-    load();
-  }, []);
 
   const handleAdd = async () => {
     if (inputText == "") return 
-    const updatedList = await addPlaylist(inputText);
-    setUrls(updatedList);
     setModalVisible(false)
     setInputText('');
     
