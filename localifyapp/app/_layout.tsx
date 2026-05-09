@@ -19,6 +19,7 @@ import { drizzle } from "drizzle-orm/expo-sqlite"
 import {useMigrations} from "drizzle-orm/expo-sqlite/migrator"
 import migrations from "@/drizzle/migrations"
 
+
 export {
   ErrorBoundary,
 } from 'expo-router';
@@ -58,6 +59,7 @@ export default function RootLayout() {
 export const DATABASE_NAME = 'Localify'
 
 function RootLayoutNav() {
+  
 
   const expoDb = openDatabaseSync(DATABASE_NAME)
   const db = drizzle(expoDb)

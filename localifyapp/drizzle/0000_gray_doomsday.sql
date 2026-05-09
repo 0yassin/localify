@@ -2,7 +2,8 @@ CREATE TABLE `playlists` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
 	`url` text NOT NULL,
-	`last_checked` text
+	`last_checked` text,
+	`icon` text
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `playlists_url_unique` ON `playlists` (`url`);--> statement-breakpoint

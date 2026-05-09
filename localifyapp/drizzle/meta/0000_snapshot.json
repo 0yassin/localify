@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "934d9740-c693-4738-9e4a-28315ed1ba56",
+  "id": "f5fa5879-2639-4305-8811-8b6bbcbbb7c3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "playlists": {
@@ -30,6 +30,13 @@
         },
         "last_checked": {
           "name": "last_checked",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "icon": {
+          "name": "icon",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
