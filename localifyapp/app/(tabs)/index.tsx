@@ -1,21 +1,66 @@
 import Card from '@/components/Card';
-import {Modal, Pressable, Text, TextInput, View } from 'react-native';
+import {ActivityIndicator, Alert, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { Shadow } from 'react-native-shadow-2';
+import { Importplaylist } from '@/components/Importplaylist';
+import { db } from '@/db/client';
+import { playlists, tracks } from '@/db/schema';
+import { count, eq, type InferSelectModel } from 'drizzle-orm';
 
+
+type BasePlaylistRow = InferSelectModel<typeof playlists>;
+
+interface playlistInterface extends BasePlaylistRow{
+  trackCount: number
+}
 
 export default function TabOneScreen() {
-  const [urls, setUrls] = useState([]);
-  const [inputText, setInputText] = useState('');
-  const [modalVisible, setModalVisible] = useState(false)
 
+  const [Input_playlist_url, setInput_playlist_url] = useState('');
+  const [modalVisible, setModalVisible] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const [allPlaylists, setAllPlaylists] = useState<playlistInterface[]>([]);
+
+    const fetchPlaylists = async () => {
+      try {
+        const result = await db.select({
+
+          id: playlists.id,
+          name: playlists.name,
+          icon: playlists.icon,
+          trackCount: count(tracks.id),
+          url: playlists.url,
+          lastChecked: playlists.lastChecked
+
+      }).from(playlists).leftJoin(tracks, eq(playlists.id, tracks.playlist)).groupBy(playlists.id);
+        setAllPlaylists(result); 
+      } catch (error) {
+        console.error("Failed to load local playlists:", error);
+      }
+    };
+
+  useEffect(() => {
+    fetchPlaylists();
+  }, []);
 
   const handleAdd = async () => {
-    if (inputText == "") return 
-    setModalVisible(false)
-    setInputText('');
-    
+
+    if (!Input_playlist_url.trim()) return;
+    try{
+      await Importplaylist(Input_playlist_url, setLoading);
+      setInput_playlist_url('');
+      setModalVisible(false);
+      await fetchPlaylists();
+    }
+    catch(err){
+      setModalVisible(false)
+      setInput_playlist_url('');
+      console.error(err)
+    }
   };
+
+
   return (
     <View className='pt-16 px-6 bg-background h-full font-poppins flex flex-col'>
       {/* Header */}
@@ -27,8 +72,17 @@ export default function TabOneScreen() {
         <Text className='text-[25px] font-poppinsBold mb-4'>Synced playlists</Text>
         <View className='gap-3 flex flex-col'>
 
-        <Card Title='peak songs' Details='20 tracks' ImagePath='placeholder' />
-        <Card Title='peak songs' Details='20 tracks' ImagePath='placeholder' />
+
+        {
+            
+            
+             allPlaylists.map((playlist, index) => (
+                <Card key={index} Title={playlist.name} Details={`${playlist.trackCount} tracks`} ImagePath={playlist.icon || "placeholder"} />
+             ))
+
+
+          }
+
 
         <View onTouchEnd={()=>setModalVisible(true)} className='w-full p-4 rounded-[6px] border-2 border-black/70 border-dashed flex-row items-center px-6 '>
           <View className='flex flex-row justify-between items-center w-full'> 
@@ -68,7 +122,7 @@ export default function TabOneScreen() {
                   style={{ borderRadius: 4, alignSelf:'stretch'}}
                   containerStyle={{ width: '100%' }} 
                 >
-                  <TextInput value={inputText} onChangeText={setInputText} placeholder='Enter spotify playlist link' className=' bg-white border-2 text-[16px] font-poppinsMedium px-4 py-4 border-black rounded-[4px]'></TextInput>
+                  <TextInput value={Input_playlist_url} onChangeText={setInput_playlist_url} placeholder='Enter spotify playlist link' className=' bg-white border-2 text-[16px] font-poppinsMedium px-4 py-4 border-black rounded-[4px]'></TextInput>
 
               </Shadow>
 
@@ -80,7 +134,15 @@ export default function TabOneScreen() {
                   style={{ borderRadius: 4, alignSelf:'stretch'}}
                   containerStyle={{ width: '100%' }} 
                 >
-                  <Pressable onPress={handleAdd} className=' bg-[#1DB954] border-2 text-[16px] font-poppinsMedium px-4 py-4 border-[#191414] rounded-[4px]'><Text className='font-poppinsSemiBold text-[16px] mx-auto text-[#191414]'>Add Playlist</Text></Pressable>
+                  <Pressable onPress={handleAdd} className=' bg-[#1DB954] border-2 text-[16px] font-poppinsMedium px-4 py-4 border-[#191414] rounded-[4px]'>
+                    {loading? 
+                    
+                      <ActivityIndicator size={'large'} color={'#191414'} /> 
+                      : 
+                      <Text className='font-poppinsSemiBold text-[16px] mx-auto text-[#191414]'>Add Playlist</Text>
+
+                    }
+                  </Pressable>
 
               </Shadow>
 

@@ -29,8 +29,8 @@ def get_playlist(url):
 
             playlist = {
                 "id": playlist_data["uri"].split(':')[-1],
-                "playlist_title": playlist_data["title"],
-                "cover": playlist_data["coverArt"]["sources"][0]["url"],
+                "playlist_name": playlist_data["title"],
+                "icon": playlist_data["coverArt"]["sources"][0]["url"],
                 "owner": playlist_data["subtitle"],
                 "tracks": tracks
             }
