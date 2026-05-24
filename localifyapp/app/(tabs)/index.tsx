@@ -6,6 +6,7 @@ import { Importplaylist } from '@/components/Importplaylist';
 import { db } from '@/db/client';
 import { playlists, tracks } from '@/db/schema';
 import { count, eq, type InferSelectModel } from 'drizzle-orm';
+import { Link } from 'expo-router';
 
 
 type BasePlaylistRow = InferSelectModel<typeof playlists>;
@@ -76,8 +77,20 @@ export default function TabOneScreen() {
         {
             
             
-             allPlaylists.map((playlist, index) => (
-                <Card key={index} Title={playlist.name} Details={`${playlist.trackCount} tracks`} ImagePath={playlist.icon || "placeholder"} />
+             allPlaylists.map((playlist) => (
+
+              <Link 
+                key={playlist.id}
+                href={{
+                  pathname: "./playlist/[id]",
+                  params: { id: playlist.id, title: playlist.name }
+                }}                
+                asChild
+              >
+                <Pressable>
+                  <Card Title={playlist.name} Details={`${playlist.trackCount} tracks`} ImagePath={playlist.icon || "placeholder"} />
+                </Pressable>
+              </Link>
              ))
 
 

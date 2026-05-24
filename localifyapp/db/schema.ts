@@ -15,6 +15,7 @@ export const tracks = sqliteTable('tracks', {
     title: text('title').notNull(),
     artist: text('artist'),
     filename: text('filename'),
+    image: text('image'),
 })
 
 export const user = sqliteTable('user', {

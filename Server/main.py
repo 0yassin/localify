@@ -13,6 +13,7 @@ class Trackscheme(BaseModel):
     id:str
     title:str
     artist:str
+    image: Optional[str] = None
 
 class PlaylistResponse(BaseModel):
     status:str

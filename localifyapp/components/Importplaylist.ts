@@ -17,6 +17,7 @@ interface SpotifyTrackResponse {
     title: string,
     artist: string,
     filename: null,
+    image: string
   }
   
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'localhost:8000'
@@ -118,6 +119,8 @@ export async function Importplaylist(spotifyurl:string, setIsSubmitting: (loadin
         title: track.title,
         artist: track.artist,
         filename: null,
+        image: track.image,
+
     }));
 
     await db.insert(tracks)
