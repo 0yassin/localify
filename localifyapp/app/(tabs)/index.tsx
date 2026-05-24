@@ -75,9 +75,7 @@ export default function TabOneScreen() {
 
 
         {
-            
-            
-             allPlaylists.map((playlist) => (
+          allPlaylists.map((playlist) => (
 
               <Link 
                 key={playlist.id}
@@ -97,26 +95,26 @@ export default function TabOneScreen() {
           }
 
 
-        <View onTouchEnd={()=>setModalVisible(true)} className='w-full p-4 rounded-[6px] border-2 border-black/70 border-dashed flex-row items-center px-6 '>
-          <View className='flex flex-row justify-between items-center w-full'> 
-            <Text className='text-[18px] font-poppinsMedium text-textColor/70  '>Add playlist</Text>
-            <Text className='text-[21px] font-poppinsMedium  text-textColor/70'>+</Text>
-          </View>
-          <View>
-            <Text className='text-[18px] text-white font-poppinsSemiBold -m-1'></Text>
-            <Text className="text-[16px] text-white/70 font-poppinsMedium"></Text>
-          </View>
-          </View>
+          <Pressable onPress={()=>{if(!loading) setModalVisible(true)}} className='w-full p-4 rounded-[6px] border-2 border-black/70 border-dashed flex-row items-center px-6 '>
+            <View className='flex flex-row justify-between items-center w-full'> 
+              <Text className='text-[18px] font-poppinsMedium text-textColor/70  '>Add playlist</Text>
+              <Text className='text-[21px] font-poppinsMedium  text-textColor/70'>+</Text>
+            </View>
+            <View>
+              <Text className='text-[18px] text-white font-poppinsSemiBold -m-1'></Text>
+              <Text className="text-[16px] text-white/70 font-poppinsMedium"></Text>
+            </View>
+          </Pressable>
 
         </View>
 
         <Modal animationType='fade'
           visible={modalVisible} 
-          onRequestClose={() => setModalVisible(false)}
+          onRequestClose={() =>{ if(!loading) setModalVisible(false)}}
           transparent={true}
         >
 
-          <Pressable onPress={(e)=>{if (e.target === e.currentTarget) setModalVisible(false);}} className='bg-black/40 justify-center items-center flex-1 px-6 '>
+          <Pressable onPress={(e)=>{if (e.target === e.currentTarget) if(!loading) setModalVisible(false);}} className='bg-black/40 justify-center items-center flex-1 px-6 '>
             <Shadow 
               
                 offset={[2, 2]} 
@@ -127,7 +125,7 @@ export default function TabOneScreen() {
                 
             >
 
-              <View className='bg-white w-full py-6 rounded-[6px] gap-2 border-black border-2 px-4'>
+              <View className='bg-white w-full py-6 rounded-[6px] gap-4 border-black border-2 px-4'>
                 <Shadow 
                   offset={[2, 2]} 
                   distance={0} 
@@ -152,7 +150,7 @@ export default function TabOneScreen() {
                     
                       <ActivityIndicator size={'large'} color={'#191414'} /> 
                       : 
-                      <Text className='font-poppinsSemiBold text-[16px] mx-auto text-[#191414]'>Add Playlist</Text>
+                      <Text className='font-poppinsSemiBold text-[16px]  mx-auto text-[#191414]'>Add Playlist</Text>
 
                     }
                   </Pressable>
