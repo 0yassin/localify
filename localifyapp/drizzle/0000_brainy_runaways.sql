@@ -22,5 +22,5 @@ CREATE UNIQUE INDEX `tracks_id_unique` ON `tracks` (`id`);--> statement-breakpoi
 CREATE TABLE `user` (
 	`id` integer PRIMARY KEY DEFAULT 1 NOT NULL,
 	`theme` text DEFAULT 'light',
-	`tracks_uri` text NOT NULL
+	`folder` text
 );

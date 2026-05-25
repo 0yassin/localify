@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "d2513b22-abee-4430-b75a-30cdf78360ad",
+  "id": "4aecf89f-968a-47cf-b685-7e4148a20afd",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "playlists": {
@@ -158,11 +158,11 @@
           "autoincrement": false,
           "default": "'light'"
         },
-        "tracks_uri": {
-          "name": "tracks_uri",
+        "folder": {
+          "name": "folder",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         }
       },

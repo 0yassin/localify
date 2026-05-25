@@ -21,7 +21,7 @@ export const tracks = sqliteTable('tracks', {
 export const user = sqliteTable('user', {
     id: integer('id').primaryKey().default(1),
     theme: text('theme').default('light'),
-    tracks_uri: text('tracks_uri').notNull()
+    folder: text('folder')
 })
 
 export type Playlist = typeof playlists.$inferSelect;
