@@ -7,7 +7,7 @@ import { db } from '@/db/client';
 import { playlists, tracks } from '@/db/schema';
 import { count, eq, type InferSelectModel } from 'drizzle-orm';
 import { Link } from 'expo-router';
-
+import { StorageUtil } from '@/components/Storage';
 
 type BasePlaylistRow = InferSelectModel<typeof playlists>;
 
@@ -22,6 +22,8 @@ export default function TabOneScreen() {
   const [loading, setLoading] = useState(false)
 
   const [allPlaylists, setAllPlaylists] = useState<playlistInterface[]>([]);
+
+  const [folder, setFolder] = useState<string | null>(null)
 
     const fetchPlaylists = async () => {
       try {
@@ -43,9 +45,30 @@ export default function TabOneScreen() {
 
   useEffect(() => {
     fetchPlaylists();
+
+    async function loadsavedir(){
+      const savedpath = await StorageUtil.GetFolder()
+      if (savedpath) setFolder(savedpath)
+    }
+
+    loadsavedir()
+
   }, []);
 
   const handleAdd = async () => {
+      let activeFolder = folder;
+
+      if (!activeFolder) {
+        const picked_path = await StorageUtil.SaveFolder();
+
+        if (!picked_path) {
+          alert("Please pick a download folder, this is where your music will be stored.");
+          return; 
+        }
+
+        activeFolder = picked_path; 
+        setFolder(picked_path);
+      }
 
     if (!Input_playlist_url.trim()) return;
     try{
