@@ -2,12 +2,12 @@ import Card from '@/components/Card';
 import {ActivityIndicator, Alert, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { Shadow } from 'react-native-shadow-2';
-import { Importplaylist } from '@/components/Importplaylist';
+import { Importplaylist } from '@/utils/Importplaylist';
 import { db } from '@/db/client';
-import { playlists, tracks } from '@/db/schema';
+import { playlists, tracks, user } from '@/db/schema';
 import { count, eq, type InferSelectModel } from 'drizzle-orm';
 import { Link } from 'expo-router';
-import { StorageUtil } from '@/components/Storage';
+import { StorageUtil } from '@/utils/Storage';
 
 type BasePlaylistRow = InferSelectModel<typeof playlists>;
 
@@ -59,6 +59,14 @@ export default function TabOneScreen() {
       let activeFolder = folder;
 
       if (!activeFolder) {
+        const dbFolderCheck = await StorageUtil.GetFolder();
+        if (dbFolderCheck) {
+          activeFolder = dbFolderCheck;
+          setFolder(dbFolderCheck);
+        }
+      }
+
+      if (!activeFolder) {
         const picked_path = await StorageUtil.SaveFolder();
 
         if (!picked_path) {
@@ -68,20 +76,20 @@ export default function TabOneScreen() {
 
         activeFolder = picked_path; 
         setFolder(picked_path);
-      }
+    }
 
-    if (!Input_playlist_url.trim()) return;
-    try{
-      await Importplaylist(Input_playlist_url, setLoading);
-      setInput_playlist_url('');
-      setModalVisible(false);
-      await fetchPlaylists();
-    }
-    catch(err){
-      setModalVisible(false)
-      setInput_playlist_url('');
-      console.error(err)
-    }
+      if (!Input_playlist_url.trim()) return;
+        try{
+          await Importplaylist(Input_playlist_url, setLoading);
+          setInput_playlist_url('');
+          setModalVisible(false);
+          await fetchPlaylists();
+        }
+        catch(err){
+          setModalVisible(false)
+          setInput_playlist_url('');
+          console.error(err)
+        }
   };
 
 

@@ -33,7 +33,7 @@ async def fetch_playlist(payload:dict):
     spotify_url = payload.get("url") 
     
     try:
-        playlist = scraper.get_playlist(spotify_url)
+        playlist = await scraper.get_playlist(spotify_url)
 
         if playlist is None:
             return ErrorResponse(

@@ -34,31 +34,8 @@ export async function Importplaylist(spotifyurl:string, setIsSubmitting: (loadin
   try {
     setIsSubmitting(true)
 
-  
 
-
-    
-
-    // expects : 
-    //{
-    //   "status": "success",
-    //   "playlist_name": "Peak Songs",
-    //   "icon": "music",
-    //   "tracks": [
-    //     {
-    //       "id": "4ptzPh9pB653XpAcoY4A7C",
-    //       "title": "Song Title One",
-    //       "artist": "Artist Name"
-    //     },
-    //     {
-    //       "id": "2TpxZ7JUBn3uw46gR7qd6V",
-    //       "title": "Song Title Two",
-    //       "artist": "Another Artist"
-    //     }
-    //   ]
-    // }
-
-    const response = await fetch("http://192.168.11.105:8000/api/playlist/fetch", {
+    const response = await fetch(`${API_URL}/api/playlist/fetch`, {
       method: 'POST',
       headers: {'Content-type': 'application/json'},
       body: JSON.stringify({ 
@@ -132,7 +109,7 @@ export async function Importplaylist(spotifyurl:string, setIsSubmitting: (loadin
 
   
   } catch (error) {
-    console.error("Playlist import pipeline failed:", error);
+    console.error(`Playlist import pipeline failed: apiurl ${API_URL}`, error);
     Alert.alert("Import Error", "Something went wrong while connecting to your server or database.");
     throw error
   } finally {

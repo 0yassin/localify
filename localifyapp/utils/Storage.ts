@@ -13,12 +13,19 @@ export const StorageUtil = {
             if (dir && dir.uri){
                 const selected_uri = dir.uri;
 
-                db.insert(user)
-                .values({id:1, folder:selected_uri})
-                .onConflictDoUpdate({
-                    target:user.id,
-                    set: {folder:selected_uri}
-                })
+                const updatedRows = await db.update(user)
+                    .set({ folder: selected_uri })
+                    .where(eq(user.id, 1));
+
+
+                if (updatedRows.changes === 0) {
+                    await db.insert(user).values({
+                        id: 1,
+                        folder: selected_uri,
+                        theme: 'light'
+                    });
+                } 
+
 
                 return selected_uri
             }
