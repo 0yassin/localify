@@ -7,7 +7,6 @@ import { user } from '@/db/schema';
 export const StorageUtil = {
     async SaveFolder(): Promise<string|null> 
     {
-
         try{
             const dir = await Directory.pickDirectoryAsync()
             if (dir && dir.uri){

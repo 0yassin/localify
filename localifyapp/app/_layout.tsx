@@ -1,3 +1,5 @@
+import '@/utils/DownloadWorker';
+
 import "@/global.css";
 import React, { useEffect } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -17,7 +19,6 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import migrations from "@/drizzle/migrations";
 
-// Import your central database assets
 import { db, DATABASE_NAME } from "@/db/client"; 
 
 export { ErrorBoundary } from 'expo-router';
@@ -26,7 +27,6 @@ export const unstable_settings = {
   initialRouteName: '(tabs)',
 };
 
-// Keep the splash screen visible while everything sets up
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {

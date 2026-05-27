@@ -8,6 +8,11 @@ import { playlists, tracks, user } from '@/db/schema';
 import { count, eq, type InferSelectModel } from 'drizzle-orm';
 import { Link } from 'expo-router';
 import { StorageUtil } from '@/utils/Storage';
+import * as BackgroundTask from 'expo-background-task';
+
+import * as Location from 'expo-location';
+import { DOWNLOAD_TASK_NAME } from '@/utils/DownloadWorker';
+
 
 type BasePlaylistRow = InferSelectModel<typeof playlists>;
 
@@ -83,7 +88,46 @@ export default function TabOneScreen() {
           await Importplaylist(Input_playlist_url, setLoading);
           setInput_playlist_url('');
           setModalVisible(false);
+
           await fetchPlaylists();
+          
+          if (activeFolder){
+            console.log("track downloading init")
+            const lastPlaylist = await db.query.playlists.findFirst({
+              orderBy: (playlists, { desc }) => [desc(playlists.id)]
+            });
+
+            if (lastPlaylist) {
+              const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+              const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+
+              if (foregroundStatus === 'granted' && backgroundStatus === 'granted'){
+                (global as any).__localifyDownloadParams = {
+                    folderUri: activeFolder,
+                    playlistId: lastPlaylist.id
+                };
+                
+
+                await Location.startLocationUpdatesAsync(DOWNLOAD_TASK_NAME, {
+                        accuracy: Location.Accuracy.Lowest,
+                        timeInterval: 10000,
+                        deferredUpdatesInterval: 10000,
+                        foregroundService: {
+                            notificationTitle: "Localify Downloader",
+                            notificationBody: "Syncing playlist tracks directly to device storage...",
+                            notificationColor: "#1DB954"
+                        }
+                    });
+
+
+
+              } else {
+                alert("Background processing permissions are required for download")
+              }
+            }
+          }
+
+
         }
         catch(err){
           setModalVisible(false)
