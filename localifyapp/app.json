@@ -26,9 +26,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.localifyapp",
       "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE"
       ]
     },
@@ -42,13 +39,7 @@
       "expo-font",
       "expo-sqlite",
       "expo-background-task",
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "Localify requires background authorization to maintain active music download streams when your device screen locks.",
-          "locationWhenInUsePermission": "Localify requires background authorization to maintain active music download streams."
-        }
-      ]
+      "@kesha-antonov/react-native-background-downloader"
     ],
     "experiments": {
       "typedRoutes": true

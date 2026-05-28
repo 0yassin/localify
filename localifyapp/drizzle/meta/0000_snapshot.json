@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "4aecf89f-968a-47cf-b685-7e4148a20afd",
+  "id": "fa5337dc-4fd1-4694-85ee-2fde5abfe892",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "playlists": {
@@ -105,6 +105,13 @@
         },
         "image": {
           "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ytlink": {
+          "name": "ytlink",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

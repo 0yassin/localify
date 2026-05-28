@@ -1,25 +1,23 @@
-import '@/utils/DownloadWorker';
 
 import "@/global.css";
-import React, { useEffect } from 'react';
+import {
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold
+} from '@expo-google-fonts/poppins';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFonts } from 'expo-font';
-import { 
-  Poppins_400Regular, 
-  Poppins_500Medium, 
-  Poppins_600SemiBold,
-  Poppins_700Bold 
-} from '@expo-google-fonts/poppins';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import React, { useEffect } from 'react';
 import 'react-native-reanimated';
-import { ActivityIndicator, View } from "react-native";
 
-import { SQLiteProvider } from 'expo-sqlite';
-import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import migrations from "@/drizzle/migrations";
+import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
+import { SQLiteProvider } from 'expo-sqlite';
 
-import { db, DATABASE_NAME } from "@/db/client"; 
+import { DATABASE_NAME, db } from "@/db/client";
 
 export { ErrorBoundary } from 'expo-router';
 

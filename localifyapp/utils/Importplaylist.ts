@@ -1,8 +1,8 @@
-import z from 'zod'
-import { Alert } from 'react-native';
 import { db } from '@/db/client';
 import { playlists, tracks } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { Alert } from 'react-native';
+import z from 'zod';
 
 const urlscheme = z.url().refine(
   (url) => url.includes('open.spotify.com/playlist/'),
@@ -103,8 +103,6 @@ export async function Importplaylist(spotifyurl:string, setIsSubmitting: (loadin
     await db.insert(tracks)
       .values(payload)
       .onConflictDoNothing({target: tracks.id})
-
-    Alert.alert("Success!", `Synchronized playlist and added ${fetched_tracks.length} tracks local to your device.`);
 
 
   

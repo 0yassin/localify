@@ -15,6 +15,7 @@ CREATE TABLE `tracks` (
 	`artist` text,
 	`filename` text,
 	`image` text,
+	`ytlink` text,
 	FOREIGN KEY (`playlist`) REFERENCES `playlists`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
