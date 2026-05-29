@@ -86,15 +86,10 @@ def get_audio_stream(url: str) -> dict:
 
 @app.get("/download")
 async def download_audio_stream(url:str = Query(..., description="full youtube video link")):
-
-    data = await run_in_threadpool(get_audio_stream, url)
+    data = await run_in_threadpool(get_audio_stream,url)
     stream_url = data["stream_url"]
     headers = data["headers"]
-
     client = httpx.AsyncClient()
-
-
-
     try:
         request = client.build_request("GET", stream_url, headers=headers)
         response = await client.send(request, stream=True)
