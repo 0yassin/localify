@@ -155,6 +155,8 @@ poetry.toml
 # ruff
 .ruff_cache/
 
+pyrefly.toml
+
 # LSP config files
 pyrightconfig.json
 

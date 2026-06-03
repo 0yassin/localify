@@ -3,14 +3,17 @@ import { db } from '@/db/client';
 import { playlists, tracks } from '@/db/schema';
 import { Importplaylist } from '@/utils/Importplaylist';
 import { StorageUtil } from '@/utils/Storage';
-import { createDownloadTask } from '@kesha-antonov/react-native-background-downloader';
-import { and, count, eq, type InferSelectModel } from 'drizzle-orm';
+import { createDownloadTask, directories } from '@kesha-antonov/react-native-background-downloader';import { and, count, eq, type InferSelectModel } from 'drizzle-orm';
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Shadow } from 'react-native-shadow-2';
+import {File, Directory} from "expo-file-system"
+import * as FileSystem from 'expo-file-system/legacy';
+import { enqueueSAFWrite } from '@/utils/safque';
+import { moveToSAF } from '@/utils/MoveToSaf';
 
-
+const completionPromises: Promise<void>[] = [];
 
 async function searchYoutube(query: string): Promise<string> {
     const searchurl = `https://www.youtube.com/results?search_query=${encodeURIComponent(`${query}`)}`
@@ -60,9 +63,8 @@ async function searchYoutube(query: string): Promise<string> {
 
 
 async function fetchAudio(url:string){
-  console.log(url) // this works so far
-  return ''
-  
+    const API_URL = process.env.EXPO_PUBLIC_API_URL 
+    return `${API_URL}/api/download?url=${encodeURIComponent(url)}`;
 }
 
 
@@ -202,26 +204,64 @@ export default function TabOneScreen() {
           }
 
           setLoadingStatus("starting background downloads");
-          
-          for (const item of urlManifest) {
+
+          for (const item of urlManifest){
+            const internalCachePath = `${directories.documents}/${item.trackId}.mp3`;
+            const localSourceUri = `file://${internalCachePath}`;
+
             const task = createDownloadTask({
                 id: item.trackId.toString(),
                 url: item.directUrl,
-                destination: `${nativeTargetFolder}/${item.trackId}.mp3`
-            });
+                destination: internalCachePath,
+              });
 
-            task.begin((expectedBytes) => {})
-                .done(async () => {
-                  await db.update(tracks)
-                    .set({ downloaded: true, filename: `${item.trackId}.mp3` })
-                    .where(eq(tracks.id, item.trackId));
-                })
-                .error((error) => {
-                  console.error(`bg download worker failed for track ID ${item.trackId}:`, error);
-                });
+            const completedpromise = new Promise<void>((resolve, reject) => {
+              task.begin((expectedBytes) => {})
+                  .done(async ()=>{
+                    try{
 
-            task.start();
+                      await enqueueSAFWrite(async () => {
+                        await moveToSAF(
+                            localSourceUri, activeFolder,
+                            `${item.title}-[${item.trackId}].mp3`
+                          )
+
+                          await db.update(tracks)
+                            .set({
+                              downloaded: true,
+                              filename: `${item.trackId}.mp3`
+                            })
+                            .where(eq(tracks.id, item.trackId));
+                          })
+
+                          resolve()
+
+                      }
+
+                      catch (e){
+                          reject(e)
+                      }
+                  })
+
+                  task.error(reject)
+              })
+
+              completionPromises.push(completedpromise)
+
+              task.start();
+
+           
+
+
           }
+          Promise.allSettled(completionPromises)
+          .then(async () => {
+            console.log("Everything finished");
+
+            await fetchPlaylists();
+          });
+          
+        
         }
       }
 

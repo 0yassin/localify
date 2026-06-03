@@ -84,7 +84,7 @@ def get_audio_stream(url: str) -> dict:
             )
 
 
-@app.get("/download")
+@app.get("/api/download")
 async def download_audio_stream(url:str = Query(..., description="full youtube video link")):
     data = await run_in_threadpool(get_audio_stream,url)
     stream_url = data["stream_url"]
