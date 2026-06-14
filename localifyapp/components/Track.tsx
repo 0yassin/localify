@@ -20,7 +20,7 @@ const Track = React.memo(function Track({ Title, Downloaded, image, Artist }: Tr
                         source={{ 
                             uri: image || ''
                         }} 
-                        className="h-[64px] aspect-square rounded-[3px] bg-teal-800"
+                        className="h-[64px] border-black border-2 aspect-square rounded-[3px] bg-teal-800"
                     />
                     
                     <View className="flex-1 ">

@@ -23,7 +23,7 @@ export default function Card({Title, ImagePath, Details}: CardProps){
                         source={{ 
                             uri: ImagePath || ''
                         }} 
-                        className=" h-[64px] aspect-square rounded-[3px] bg-teal-800"
+                        className=" h-[70px] aspect-square rounded-[3px] bg-teal-800 border-2 border-black"
                     />
             
             <View className="">
