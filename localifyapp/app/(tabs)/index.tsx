@@ -12,12 +12,10 @@ import {File, Directory} from "expo-file-system"
 import * as FileSystem from 'expo-file-system/legacy';
 import { enqueueSAFWrite } from '@/utils/safque';
 import { moveToSAF } from '@/utils/MoveToSaf';
-
-const completionPromises: Promise<void>[] = [];
+import { Track } from '@/db/schema';
 
 async function searchYoutube(query: string): Promise<string> {
     const searchurl = `https://www.youtube.com/results?search_query=${encodeURIComponent(`${query}`)}`
-
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000); 
@@ -37,7 +35,6 @@ async function searchYoutube(query: string): Promise<string> {
       }
 
       const html = await res.text();
-
       const videoRendererRegex = /"videoRenderer"\s*:\s*\{\s*"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"/;
       const match = html.match(videoRendererRegex);
 
@@ -50,27 +47,20 @@ async function searchYoutube(query: string): Promise<string> {
       if (fallbackMatch && fallbackMatch[1]) {
           return fallbackMatch[1];
       }
-
       throw new Error("Target video coudl not be extracted from YouTube response.");
-
     } 
-
     catch (err) {
       console.error("YouTube scraper exception:", err);
       throw new Error("Search execution failed");
     }
 }
 
-
 async function fetchAudio(url:string){
     const API_URL = process.env.EXPO_PUBLIC_API_URL 
     return `${API_URL}/api/download?url=${encodeURIComponent(url)}`;
 }
 
-
-
 type BasePlaylistRow = InferSelectModel<typeof playlists>;
-
 interface playlistInterface extends BasePlaylistRow {
   trackCount: number;
 }
@@ -83,12 +73,10 @@ export default function TabOneScreen() {
   const [allPlaylists, setAllPlaylists] = useState<playlistInterface[]>([]);
   const [folder, setFolder] = useState<string | null>(null);
 
-
-
-   const fetchPlaylists = async () => {
-
+  const fetchPlaylists = async () => {
     try {
-      const result = await db.select({
+      const RerenderPlaylists = async () => {
+        const result = await db.select({
         id: playlists.id,
         name: playlists.name,
         icon: playlists.icon,
@@ -96,14 +84,45 @@ export default function TabOneScreen() {
         url: playlists.url,
         lastChecked: playlists.lastChecked
       }).from(playlists).leftJoin(tracks, eq(playlists.id, tracks.playlist)).groupBy(playlists.id);
-
       setAllPlaylists(result);
+    }
+
+    RerenderPlaylists()
+      
+    const downloadedTracks:Track[] = await db
+      .select()
+      .from(tracks)
+      .where(eq(tracks.downloaded, true));
+
+    setTimeout(async () => {
+      try{
+        const DownloadedTracks: Track[] = await db.select().from(tracks).where(eq(tracks.downloaded ,true))
+        let library_changed = false
+
+        for (const track of downloadedTracks){
+            if (track.filename){
+              const FileInfo = await FileSystem.getInfoAsync(track.filename)
+              if (!FileInfo.exists){
+                await db.update(tracks)
+                 .set({downloaded: false, filename:null})
+                 .where((eq(tracks.id, track.id)))
+
+                 library_changed = true
+              }
+            }
+          }
+         if (library_changed){
+            RerenderPlaylists()
+          }
+        }
+        catch (e){
+          console.error("Database sync error:", e)
+        }
+      }, 0)
       } catch (error) {
         console.error("Failed to load local playlists:", error);
       }
-
   };
-
 
   useEffect(() => {
     fetchPlaylists();
@@ -114,11 +133,8 @@ export default function TabOneScreen() {
         loadsavedir();
       }, []);
 
-
-
-
-
   const handleAdd = async () => {
+    const completionPromises: Promise<void>[] = [];
     let activeFolder = folder;
     const cleanPlaylistUrl = Input_playlist_url.trim();
 
@@ -221,47 +237,39 @@ export default function TabOneScreen() {
                     try{
 
                       await enqueueSAFWrite(async () => {
-                        await moveToSAF(
-                            localSourceUri, activeFolder,
-                            `${item.title}-[${item.trackId}].mp3`
-                          )
+                        const finalUri = await moveToSAF(localSourceUri, activeFolder, `${item.title}-[${item.trackId}].mp3`);
+                        const fileInfo = await FileSystem.getInfoAsync(finalUri);
 
+                        if (fileInfo.exists){
                           await db.update(tracks)
                             .set({
-                              downloaded: true,
-                              filename: `${item.trackId}.mp3`
-                            })
+                                downloaded: true,
+                                filename: finalUri
+                              })
                             .where(eq(tracks.id, item.trackId));
-                          })
+                        }
 
-                          resolve()
-
-                      }
-
-                      catch (e){
-                          reject(e)
-                      }
+                        else {
+                          throw new Error((`Download failed for track ${item.title}`))
+                        }
+  
+                      })
+                      resolve()
+                    }
+                    catch (e){
+                      reject(e)
+                    }
                   })
-
                   task.error(reject)
               })
-
               completionPromises.push(completedpromise)
-
               task.start();
-
-           
-
-
           }
           Promise.allSettled(completionPromises)
           .then(async () => {
             console.log("Everything finished");
-
             await fetchPlaylists();
           });
-          
-        
         }
       }
 
