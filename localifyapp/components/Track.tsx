@@ -31,7 +31,9 @@ const Track = React.memo(function Track({ Title, Downloaded, image, Artist }: Tr
                             {Artist}
                         </Text>
                     </View>
-
+                    
+                    <View className={`aspect-square h-[28px] rounded-full mr-2 ${Downloaded? "bg-[#1DB954]":"bg-[#D43D2C]"} `}>
+                    </View>
                 </View>
         </View>
     );
