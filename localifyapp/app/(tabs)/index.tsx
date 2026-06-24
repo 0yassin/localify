@@ -1,29 +1,23 @@
-import Card from '@/components/Card';
+import { downloadAndStore, ManifestItem, resolveTrackLink } from '@/components/DownloadTracks';
+import Playlist from '@/components/Playlist';
 import { db } from '@/db/client';
-import { playlists, Track, tracks } from '@/db/schema';
+import { playlists, tracks } from '@/db/schema';
 import { Importplaylist } from '@/utils/Importplaylist';
-import { moveToSAF } from '@/utils/MoveToSaf';
-import { enqueueSAFWrite } from '@/utils/safque';
 import { StorageUtil } from '@/utils/Storage';
-import { createDownloadTask, directories } from '@kesha-antonov/react-native-background-downloader';
-import { and, count, eq, type InferSelectModel } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Shadow } from 'react-native-shadow-2';
 
-
 const RESOLVE_CONCURRENCY = 4;
 const DOWNLOAD_CONCURRENCY = 3;
 
-type BasePlaylistRow = InferSelectModel<typeof playlists>;
-interface PlaylistWithCount extends BasePlaylistRow {
-  trackCount: number;
+interface Playlist_ {
+  id: number,
+  name:string,
 }
-
-type ManifestItem = { trackId: string; title: string; directUrl: string };
-type DownloadResult = { success: boolean; title: string };
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -39,57 +33,9 @@ async function mapWithConcurrency<T, R>(
       results[current] = await fn(items[current], current);
     }
   }
-
   const workerCount = Math.max(1, Math.min(limit, items.length));
   await Promise.all(Array.from({ length: workerCount }, worker));
   return results;
-}
-
-async function searchYoutube(query: string): Promise<string> {
-  const searchurl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-    const res = await fetch(searchurl, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-      },
-    });
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      throw new Error(`Youtube error: ${res.status}`);
-    }
-
-    const html = await res.text();
-    const videoRendererRegex = /"videoRenderer"\s*:\s*\{\s*"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"/;
-    const match = html.match(videoRendererRegex);
-    if (match && match[1]) {
-      return match[1];
-    }
-
-
-    const fallbackRegex = /"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"/;
-    const fallbackMatch = html.match(fallbackRegex);
-    if (fallbackMatch && fallbackMatch[1]) {
-      return fallbackMatch[1];
-    }
-
-    throw new Error('Target video could not be extracted from YouTube response.');
-  } catch (err) {
-    console.error('YouTube scraper exception:', err);
-    throw new Error('Search execution failed');
-  }
-}
-
-async function fetchAudio(url: string) {
-    const API_URL = process.env.EXPO_PUBLIC_API_URL 
-    return `${API_URL}/api/download?url=${encodeURIComponent(url)}`;
 }
 
 async function SyncDownloadWithDB(): Promise<boolean> {
@@ -97,7 +43,6 @@ async function SyncDownloadWithDB(): Promise<boolean> {
     .select()
     .from(tracks)
     .where(eq(tracks.downloaded, true));
-
   let changed = false;
 
   for (const track of downloadedTracks) {
@@ -146,89 +91,19 @@ async function SyncDownloadWithDB(): Promise<boolean> {
   return changed;
 }
 
-
-async function resolveTrackLink(track: Track): Promise<ManifestItem | null> {
-  try {
-    let ytUrl = track.ytlink;
-
-    if (!ytUrl || ytUrl.length <= 1) {
-      const vidID = await searchYoutube(`${track.title} - ${track.artist}`);
-      ytUrl = `https://www.youtube.com/watch?v=${vidID}`;
-      await db.update(tracks).set({ ytlink: ytUrl }).where(eq(tracks.id, track.id));
-    }
-
-    const directUrl = await fetchAudio(ytUrl);
-    return { trackId: track.id, title: track.title, directUrl };
-  } catch (err) {
-    console.error(`Skipped track link generation for ${track.title}:`, err);
-    return null;
-  }
-}
-
-
-async function downloadAndStore(item: ManifestItem, activeFolder: string): Promise<DownloadResult> {
-  return new Promise((resolve) => {
-    const internalCachePath = `${directories.documents}/${item.trackId}.mp3`;
-    const localSourceUri = `file://${internalCachePath}`;
-
-    const task = createDownloadTask({
-      id: item.trackId,
-      url: item.directUrl,
-      destination: internalCachePath,
-    });
-
-    task.begin(() => {});
-
-    task.done(async () => {
-      try {
-        await enqueueSAFWrite(async () => {
-          const finalUri = await moveToSAF(localSourceUri, activeFolder, `${item.title}-[${item.trackId}].mp3`);
-          const fileInfo = await FileSystem.getInfoAsync(finalUri);
-
-          if (!fileInfo.exists) {
-            throw new Error(`Download failed for track ${item.title}`);
-          }
-
-          await db.update(tracks).set({ downloaded: true, filename: finalUri }).where(eq(tracks.id, item.trackId));
-
-          try {
-            await FileSystem.deleteAsync(internalCachePath, { idempotent: true });
-          } catch {
-          }
-        });
-        resolve({ success: true, title: item.title });
-      } catch (e) {
-        console.error(`Failed to finalize download for ${item.title}:`, e);
-        resolve({ success: false, title: item.title });
-      }
-    });
-
-    task.error((e: unknown) => {
-      console.error(`Download task error for ${item.title}:`, e);
-      resolve({ success: false, title: item.title });
-    });
-
-    task.start();
-  });
-}
-
 export default function TabOneScreen() {
   const [inputPlaylistUrl, setInputPlaylistUrl] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState('Importing tracks from Spotify...');
-  const [allPlaylists, setAllPlaylists] = useState<PlaylistWithCount[]>([]);
+  const [allPlaylists, setAllPlaylists] = useState<Playlist_[]>([]);
   const [folder, setFolder] = useState<string | null>(null);
 
   const RerenderPlaylists = async () => {
     const result = await db
       .select({
         id: playlists.id,
-        name: playlists.name,
-        icon: playlists.icon,
-        trackCount: count(tracks.id),
-        url: playlists.url,
-        lastChecked: playlists.lastChecked,
+        name:playlists.name,
       })
       .from(playlists)
       .leftJoin(tracks, eq(playlists.id, tracks.playlist))
@@ -261,7 +136,6 @@ export default function TabOneScreen() {
 
       await fetchPlaylists();
     }
-
     init();
   }, []);
 
@@ -276,7 +150,6 @@ export default function TabOneScreen() {
         setFolder(dbFolderCheck);
       }
     }
-
     if (!activeFolder) {
       const picked_path = await StorageUtil.SaveFolder();
       if (!picked_path) {
@@ -321,7 +194,7 @@ export default function TabOneScreen() {
         const urlManifest = manifestResults.filter((item): item is ManifestItem => item !== null);
         resolveFailures = pendingTracks.length - urlManifest.length;
 
-        if (urlManifest.length > 0) {
+        if (urlManifest.length >= 0) {
           let completedCount = 0;
           const downloadResults = await mapWithConcurrency(urlManifest, DOWNLOAD_CONCURRENCY, async (item) => {
             const result = await downloadAndStore(item, activeFolder as string);
@@ -396,20 +269,18 @@ export default function TabOneScreen() {
               asChild
             >
               <Pressable>
-                <Card Title={playlist.name} Details={`${playlist.trackCount} tracks`} ImagePath={playlist.icon || 'placeholder'} />
+                {}
+                <Playlist ID={playlist.id}/>
               </Pressable>
             </Link>
           ))}
-
           <Pressable onPress={() => { if (!loading) setModalVisible(true); }} className='w-full p-4 rounded-[6px] border-2 border-black/70 border-dashed flex-row items-center px-6 '>
             <View className='flex flex-row justify-between items-center w-full'>
               <Text className='text-[18px] font-poppinsMedium text-textColor/70  '>Add playlist</Text>
               <Text className='text-[21px] font-poppinsMedium  text-textColor/70'>+</Text>
             </View>
           </Pressable>
-
         </View>
-
         <Modal
           animationType='fade'
           visible={modalVisible}
@@ -460,7 +331,6 @@ export default function TabOneScreen() {
             </Shadow>
           </Pressable>
         </Modal>
-
       </View>
     </View>
   );
