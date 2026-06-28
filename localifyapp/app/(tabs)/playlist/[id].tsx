@@ -83,6 +83,7 @@ export default function Playlistscreen() {
                 .where(eq(tracks.playlist, Number(id)));
 
             setTracklist(results);
+            SyncDownloadWithDB()
         } catch (error) {
             console.error("Failed to load tracks for playlist:", error);        
         } finally {

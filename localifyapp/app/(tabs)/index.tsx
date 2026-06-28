@@ -1,10 +1,11 @@
 import { downloadAndStore, ManifestItem, resolveTrackLink } from '@/components/DownloadTracks';
 import Playlist from '@/components/Playlist';
 import { db } from '@/db/client';
-import { playlists, tracks } from '@/db/schema';
+import { playlists, tracks, user } from '@/db/schema';
 import { Importplaylist } from '@/utils/Importplaylist';
 import { StorageUtil } from '@/utils/Storage';
 import { and, eq } from 'drizzle-orm';
+import { Checkbox } from 'expo-checkbox';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -87,6 +88,11 @@ async function SyncDownloadWithDB(): Promise<boolean> {
       changed = true;
     }
   }
+  const folder = await db.select({folder: user.folder}).from(user).where(eq(user.id, 1)).limit(1)
+  if (folder[0].folder != null){
+      const fs_tracks = await FileSystem.readDirectoryAsync(folder[0].folder)
+      
+  }
 
   return changed;
 }
@@ -95,9 +101,12 @@ export default function TabOneScreen() {
   const [inputPlaylistUrl, setInputPlaylistUrl] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loadingStatus, setLoadingStatus] = useState('Importing tracks from Spotify...');
+  const [loadingStatus, setLoadingStatus] = useState('');
   const [allPlaylists, setAllPlaylists] = useState<Playlist_[]>([]);
   const [folder, setFolder] = useState<string | null>(null);
+  const [plmenuVisible, setplmenuVisible] = useState(false)
+  const [selectedpl, setselectedpl] = useState<Playlist_>()
+  const [deltrackstoggle, setdeltrackstoggle] = useState(false)
 
   const RerenderPlaylists = async () => {
     const result = await db
@@ -140,6 +149,7 @@ export default function TabOneScreen() {
   }, []);
 
   const handleAdd = async () => {
+    console.log('wdad')
     let activeFolder = folder;
     const cleanPlaylistUrl = inputPlaylistUrl.trim();
 
@@ -232,6 +242,39 @@ export default function TabOneScreen() {
     }
   };
 
+  const handledelete = async () => {
+    fetchPlaylists()
+    SyncDownloadWithDB()
+    try{
+      if (!selectedpl) return
+        try{
+          await db.delete(playlists).where(eq(playlists.id, selectedpl.id))
+        }
+        catch (e){
+          console.log("playlist deleteion from db error:", e)
+        }
+        if(deltrackstoggle){
+          const del_queue = await db.select().from(tracks).where(eq(tracks.playlist, selectedpl.id))
+          for (const track of del_queue){
+            if (track.filename){
+              try{
+                await FileSystem.deleteAsync(track.filename)     
+                await db.delete(tracks).where(eq(tracks.filename, track.filename))           
+              }
+              catch (e){
+                console.log("Track deletion from filesystem error:", e)
+              }
+            }
+          }
+        }
+    }
+    catch (e){
+      console.error(e)
+    }
+    fetchPlaylists()
+    SyncDownloadWithDB()
+  }
+
   return (
     <View className='pt-16 px-6 bg-background h-full font-poppins flex flex-col'>
       {/* Header */}
@@ -254,7 +297,7 @@ export default function TabOneScreen() {
 
       <View className=''>
         <View className='w-full flex justify-between flex-row items-center'>
-          <Text className='text-[25px] font-poppinsBold'>Synced playlists</Text>
+          <Text className='text-[25px] font-poppinsBold mb-2'>Synced playlists</Text>
           <Pressable onPress={()=>{fetchPlaylists()}} className='bg-green-500 aspect-square h-10'><Text className='w-full h-full text-center'>Rel</Text></Pressable>
         </View>
         <View className='gap-3 flex flex-col'>
@@ -268,8 +311,7 @@ export default function TabOneScreen() {
               }}
               asChild
             >
-              <Pressable>
-                {}
+              <Pressable onLongPress={()=>{setplmenuVisible(true); setselectedpl(playlist)}}>
                 <Playlist ID={playlist.id}/>
               </Pressable>
             </Link>
@@ -320,9 +362,43 @@ export default function TabOneScreen() {
                       style={{ borderRadius: 4, alignSelf: 'stretch' }}
                       containerStyle={{ width: '100%' }}
                     >
-                      <Pressable onPress={handleAdd} className='bg-[#1DB954] border-2 text-[16px] font-poppinsMedium px-4 py-4 border-[#191414] rounded-[4px]'>
+                      <Pressable onPress={()=>{handleAdd();setModalVisible(false)}} className='bg-[#1DB954] border-2 text-[16px] font-poppinsMedium px-4 py-4 border-[#191414] rounded-[4px]'>
                         <Text className='font-poppinsSemiBold text-[16px] mx-auto text-[#191414]'>
                           Add Playlist
+                        </Text>
+                      </Pressable>
+                    </Shadow>
+                  </>
+              </View>
+            </Shadow>
+          </Pressable>
+        </Modal>
+        
+        <Modal visible={plmenuVisible} animationType='fade' transparent={true} onRequestClose={()=>setplmenuVisible(false)}>
+          <Pressable onPress={(e) => { if (e.target === e.currentTarget) setplmenuVisible(false); setdeltrackstoggle(false) }} className='bg-black/40 justify-center items-center flex-1 px-6 '>
+            <Shadow
+              offset={[2, 2]}
+              distance={0}
+              startColor={'#000000'}
+              style={{ borderRadius: 6, alignSelf: 'stretch' }}
+              containerStyle={{ width: '100%' }}
+            >
+              <View className='bg-white w-full py-6 rounded-[6px] gap-4 border-black border-2 px-4'>
+                  <>
+                  <View className='flex flex-row justify-between'>
+                    <Text className='text-[16px] font-poppins'>Delete tracks from device</Text>
+                    <Checkbox color={deltrackstoggle? '#D43D2C' : ''} value={deltrackstoggle} onValueChange={setdeltrackstoggle} />
+                  </View>
+                    <Shadow
+                      offset={[2, 2]}
+                      distance={0}
+                      startColor={'#191414'}
+                      style={{ borderRadius: 4, alignSelf: 'stretch' }}
+                      containerStyle={{ width: '100%' }}
+                    >
+                      <Pressable onPress={()=>{handledelete();setplmenuVisible(false);setdeltrackstoggle(false)}} className='bg-[#D43D2C] border-2 text-[16px] font-poppinsMedium px-4 py-4 border-[#191414] rounded-[4px]'>
+                        <Text className='font-poppinsSemiBold text-[16px] mx-auto text-[#191414]'>
+                          Delete playlist
                         </Text>
                       </Pressable>
                     </Shadow>
