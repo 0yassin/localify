@@ -1,9 +1,10 @@
-import { downloadAndStore, ManifestItem, resolveTrackLink } from '@/components/DownloadTracks';
 import Playlist from '@/components/Playlist';
 import { db } from '@/db/client';
-import { playlists, tracks, user } from '@/db/schema';
+import { playlists, tracks } from '@/db/schema';
+import { downloadAndStore, ManifestItem, resolveTrackLink } from '@/utils/DownloadTracks';
 import { Importplaylist } from '@/utils/Importplaylist';
 import { StorageUtil } from '@/utils/Storage';
+import { SyncDownloadWithDB } from '@/utils/SyncDownloadWithDB';
 import { and, eq } from 'drizzle-orm';
 import { Checkbox } from 'expo-checkbox';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -39,63 +40,7 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
-async function SyncDownloadWithDB(): Promise<boolean> {
-  const downloadedTracks = await db
-    .select()
-    .from(tracks)
-    .where(eq(tracks.downloaded, true));
-  let changed = false;
 
-  for (const track of downloadedTracks) {
-    if (!track.filename) {
-      await db
-        .update(tracks)
-        .set({
-          downloaded: false,
-          filename: null,
-        })
-        .where(eq(tracks.id, track.id));
-
-      changed = true;
-      continue;
-    }
-
-    try {
-      const fileInfo = await FileSystem.getInfoAsync(track.filename);
-
-      if (!fileInfo.exists) {
-        await db
-          .update(tracks)
-          .set({
-            downloaded: false,
-            filename: null,
-          })
-          .where(eq(tracks.id, track.id));
-
-        changed = true;
-      }
-    } catch (e) {
-      console.error(`Sync error for ${track.id}:`, e);
-
-      await db
-        .update(tracks)
-        .set({
-          downloaded: false,
-          filename: null,
-        })
-        .where(eq(tracks.id, track.id));
-
-      changed = true;
-    }
-  }
-  const folder = await db.select({folder: user.folder}).from(user).where(eq(user.id, 1)).limit(1)
-  if (folder[0].folder != null){
-      const fs_tracks = await FileSystem.readDirectoryAsync(folder[0].folder)
-      
-  }
-
-  return changed;
-}
 
 export default function TabOneScreen() {
   const [inputPlaylistUrl, setInputPlaylistUrl] = useState('');
@@ -259,12 +204,13 @@ export default function TabOneScreen() {
             if (track.filename){
               try{
                 await FileSystem.deleteAsync(track.filename)     
-                await db.delete(tracks).where(eq(tracks.filename, track.filename))           
               }
               catch (e){
                 console.log("Track deletion from filesystem error:", e)
               }
             }
+            await db.delete(tracks).where(eq(tracks.id, track.id))           
+
           }
         }
     }
@@ -322,6 +268,7 @@ export default function TabOneScreen() {
               <Text className='text-[21px] font-poppinsMedium  text-textColor/70'>+</Text>
             </View>
           </Pressable>
+          <Link href={'./tracks/tracksp'}><Text>Helo</Text></Link>
         </View>
         <Modal
           animationType='fade'

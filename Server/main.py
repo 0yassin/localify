@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 import httpx
 from fastapi.responses import StreamingResponse
-
+import re
 app = FastAPI()
 
 
@@ -89,7 +89,8 @@ async def download_audio_stream(url:str = Query(..., description="full youtube v
     data = await run_in_threadpool(get_audio_stream,url)
     stream_url = data["stream_url"]
     headers = data["headers"]
-    client = httpx.AsyncClient()
+    timeout_config = httpx.Timeout(connect=15.0, read=None, write=30.0, pool=30.0)
+    client = httpx.AsyncClient(timeout=timeout_config)
     try:
         request = client.build_request("GET", stream_url, headers=headers)
         response = await client.send(request, stream=True)
@@ -140,3 +141,38 @@ async def download_audio_stream(url:str = Query(..., description="full youtube v
         media_type="audio/mpeg",
         headers=_headers
     )
+
+def extract_video_id(result) -> Optional[str]:
+    print(f"DEBUG extract_video_id called, result: {result}")
+    if not result:
+        return None
+    entries = result.get('entries')
+    if entries:
+        return entries[0].get('id')
+    if result.get('id'):
+        return result['id']
+    target = result.get('webpage_url') or result.get('url')
+    if target:
+        match = re.search(r'(?:v=|youtu\.be/)([a-zA-Z0-9_-]{11})', target)
+        if match:
+            return match.group(1)
+    return None
+
+@app.get("/api/search")
+def search(q: str = Query(..., description="Search query to search YT for")):
+    ytdl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+        'default_search': 'ytsearch1',
+    }
+    try:
+        with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
+            result = ydl.extract_info(q, download=False)
+            video_id = extract_video_id(result)
+            if not video_id:
+                raise HTTPException(status_code=404, detail="No results found")
+            return {"videoId": video_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

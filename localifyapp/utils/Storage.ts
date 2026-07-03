@@ -1,7 +1,7 @@
-import { Directory } from 'expo-file-system';
 import { db } from '@/db/client';
-import { eq } from 'drizzle-orm';
 import { user } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { Directory } from 'expo-file-system';
 
 
 export const StorageUtil = {
@@ -51,5 +51,6 @@ export const StorageUtil = {
             console.error(`failed to load folder: ${error}`)
             return null
         }
+
     }
 }

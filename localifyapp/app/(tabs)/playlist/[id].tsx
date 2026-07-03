@@ -1,9 +1,11 @@
 import Track from "@/components/Track";
 import { db } from "@/db/client";
 import { tracks } from "@/db/schema";
+import { useDownloads } from "@/hooks/useDownloads";
+import { downloadStore } from "@/utils/DownloadStore";
+import { SyncDownloadWithDB } from "@/utils/SyncDownloadWithDB";
 import { Ionicons } from "@expo/vector-icons";
 import { type InferSelectModel, eq } from "drizzle-orm";
-import * as FileSystem from 'expo-file-system/legacy';
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
@@ -11,66 +13,14 @@ import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native
 
 type BaseTrackRow = InferSelectModel<typeof tracks>;
 
-async function SyncDownloadWithDB(): Promise<boolean> {
-  const downloadedTracks = await db
-    .select()
-    .from(tracks)
-    .where(eq(tracks.downloaded, true));
-
-  let changed = false;
-
-  for (const track of downloadedTracks) {
-    if (!track.filename) {
-      await db
-        .update(tracks)
-        .set({
-          downloaded: false,
-          filename: null,
-        })
-        .where(eq(tracks.id, track.id));
-
-      changed = true;
-      continue;
-    }
-
-    try {
-      const fileInfo = await FileSystem.getInfoAsync(track.filename);
-
-      if (!fileInfo.exists) {
-        await db
-          .update(tracks)
-          .set({
-            downloaded: false,
-            filename: null,
-          })
-          .where(eq(tracks.id, track.id));
-
-        changed = true;
-      }
-    } catch (e) {
-      console.error(`Sync error for ${track.id}:`, e);
-
-      await db
-        .update(tracks)
-        .set({
-          downloaded: false,
-          filename: null,
-        })
-        .where(eq(tracks.id, track.id));
-
-      changed = true;
-    }
-  }
-
-  return changed;
-}
 
 export default function Playlistscreen() {
     const { id, title } = useLocalSearchParams<{ id: string; title?: string }>();
     const router = useRouter(); 
-
     const [tracklist, setTracklist] = useState<BaseTrackRow[]>([]);
     const [loading, setLoading] = useState(false);
+    const downloads = useDownloads();
+    
 
     const fetchtracks = async () => {
         if (!id) return;
@@ -135,14 +85,22 @@ export default function Playlistscreen() {
                     } 
                     contentContainerStyle={{ paddingBottom: 60, gap: 10 }}
                     showsVerticalScrollIndicator={false}
-                    renderItem={({ item }) => (
-                        <Track 
-                            Title={item.title} 
-                            Artist={item.artist ?? 'Unknown Artist'}  
-                            image={item.image ?? ''}
-                            Downloaded={!!item.downloaded}
-                        />
-                    )}
+                    renderItem={({ item }) => {
+                        const entry = downloads[item.id];
+                        return (
+                            <Track 
+                                Title={item.title} 
+                                Artist={item.artist ?? 'Unknown Artist'}  
+                                image={item.image ?? ''}
+                                Downloaded={!!item.downloaded}
+                                Progress={entry ? entry.bytesDownloaded / (entry.bytesTotal || 1):undefined}
+                                Status={entry?.status}
+                                onPausePress={() => downloadStore.pause(item.id)}
+                                onResumePress={() => downloadStore.resume(item.id)}
+                                onCancelPress={() => downloadStore.cancel(item.id)}
+                            />
+                        )
+                    }}
                 />
             )}
         </View>

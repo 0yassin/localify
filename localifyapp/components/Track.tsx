@@ -1,15 +1,20 @@
-import { View, Text, Image } from "react-native";
-import { Shadow } from 'react-native-shadow-2';
-import React from 'react'; 
+import React from 'react';
+import { Image, Pressable, Text, View } from "react-native";
 
 interface Trackprops {
     Title: string;
     Downloaded: boolean;
     image: string | null; 
     Artist: string;
+    Progress: number | undefined;
+    Status: string | undefined;
+    onPausePress?: () => void;
+    onResumePress?: () => void;
+    onCancelPress?: () => void;
+    onStartPress?: () => void;
 }
 
-const Track = React.memo(function Track({ Title, Downloaded, image, Artist }: Trackprops) {
+const Track = React.memo(function Track({ Title, Downloaded, image, Artist, Progress, Status, onResumePress, onPausePress, onStartPress }: Trackprops) {
     return (
         <View className="w-full">
 
@@ -31,9 +36,38 @@ const Track = React.memo(function Track({ Title, Downloaded, image, Artist }: Tr
                             {Artist}
                         </Text>
                     </View>
-                    
-                    <View className={`aspect-square h-[28px] rounded-full mr-2 ${Downloaded? "bg-[#1DB954]":"bg-[#D43D2C]"} `}>
-                    </View>
+
+                    {Progress !== undefined && (
+                        <View className='max-w-[30px]'>
+                            <Text className="text-[16px] font-poppinsMedium" numberOfLines={1}>
+                                {Math.round(Progress * 100)}%
+                            </Text>
+                        </View>
+                    )}
+                    {
+                    Downloaded?
+                         <View className={`aspect-square h-[28px] rounded-full mr-2 $ bg-[#1DB954]`}/>   
+                        :
+
+                         <View>
+                            {Status === 'downloading' && (
+                                <Pressable onPress={onPausePress}>
+                                    <Image style={{ marginRight: 8, height: 28, width: 28 }} source={require("../assets/images/pause-icon.png")}/>
+                                </Pressable>
+                            )}
+                            {Status === 'paused' && (
+                                <Pressable onPress={onResumePress}>
+                                    <Image style={{ marginRight: 8, height: 28, width: 28 }} source={require("../assets/images/play-icon.png")}/>
+                                </Pressable>
+                            )}
+                            {!Status && (
+                                <Pressable onPress={onStartPress}>
+                                    <Image style={{ marginRight: 8, height: 28, width: 28 }} source={require("../assets/images/download-icon.png")}/>
+                                </Pressable>
+                            )}
+                         </View>
+                    }
+
                 </View>
         </View>
     );
