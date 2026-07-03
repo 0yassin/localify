@@ -1,14 +1,5 @@
-// hooks/useDownloads.ts
-import { downloadStore } from '@/utils/DownloadStore';
-import { useMemo, useSyncExternalStore } from 'react';
-
-export function useDownloads() {
-    return useSyncExternalStore(
-        downloadStore.subscribe,
-        downloadStore.getSnapshot,
-        downloadStore.getSnapshot
-    );
-}
+import { useDownloads } from '@/hooks/useDownloads';
+import { useMemo } from 'react';
 
 export function usePlaylistDownloadStatus(trackIds: string[]) {
     const downloads = useDownloads();
@@ -20,7 +11,6 @@ export function usePlaylistDownloadStatus(trackIds: string[]) {
         return {
             isAnyDownloading: activeEntries.length > 0,
             activeCount: activeEntries.length,
-            activeTrackIds: activeEntries.map(([id]) => id),
         };
     }, [downloads, trackIds]);
 }

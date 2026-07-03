@@ -133,9 +133,6 @@ export default function trackspage(){
                     renderItem={({ item }) => {
                         const entry = downloads[item.id];
                         return(
-
-                            
-                            
                             <Pressable onLongPress={()=>{setTrackModalVisible(true); setSelectedTrack(item.id)}}>
                         
                         <Track     

@@ -2,11 +2,13 @@ import { db } from "@/db/client";
 import { playlists, tracks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { useEffect, useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Image, Text, View } from "react-native";
 import { Shadow } from 'react-native-shadow-2';
 
 interface CardProps{
     ID: number,
+    isDownloading: boolean,
+    activeCount: number,
 }
 interface PlaylistData{
     Image: string | null,
@@ -39,7 +41,7 @@ async function GetPlaylistData(ID:number){
 }
 
 
-export default function Card({ID}: CardProps){
+export default function Card({ID, isDownloading, activeCount}: CardProps){
     const [Playlist, setPlaylist] = useState<PlaylistData>()
     const [loading, setloading] = useState(false)
     useEffect(()=>{
@@ -68,7 +70,9 @@ export default function Card({ID}: CardProps){
       startColor={'#000000'}
       style={{ borderRadius: 6 }} 
     >
-        <View className="flex bg-card flex-row justify-between px-2 py-2 items-center gap-3 border-2 border-black rounded-[6px]">
+        <View className={`flex bg-card border-2 border-black rounded-[6px]`}>
+          <View className="flex-row justify-between px-2 py-2 items-center gap-3  ">
+
             <View className="flex flex-row gap-2 items-center">
             <Image 
                 source={{ 
@@ -79,10 +83,19 @@ export default function Card({ID}: CardProps){
             
             <View className="">
                 <Text className="text-[18px] -mb-1 font-poppinsSemiBold">{Playlist?.Title}</Text>
-                <Text className="text-[16px] font-poppinsMedium">{Playlist?.TrackCount} Tracks</Text>
+                {isDownloading?
+                    <Text className="text-[16px] font-poppinsMedium">{activeCount} Downloading</Text>
+
+                :
+                    <Text className="text-[16px] font-poppinsMedium">{Playlist?.DownloadedCount}/{Playlist?.TrackCount} Tracks</Text>
+                }
             </View>
             </View>
-            <Pressable className="bg-green-500 rounded-full aspect-square"><Text className="h-full w-full text-[16px] ">DWN</Text></Pressable>
+            {isDownloading&&(
+                <ActivityIndicator size={'large'} style={{transform:'scale(0.8)'}} className="h-[24px] w-[24px] mr-2"/>
+            )}
+          </View>
+
         </View>
     </Shadow>
     </View>

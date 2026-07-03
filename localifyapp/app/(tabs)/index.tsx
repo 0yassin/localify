@@ -1,4 +1,4 @@
-import Playlist from '@/components/Playlist';
+import PlaylistRow from '@/components/PlaylistRow';
 import { db } from '@/db/client';
 import { playlists, tracks } from '@/db/schema';
 import { downloadAndStore, ManifestItem, resolveTrackLink } from '@/utils/DownloadTracks';
@@ -52,18 +52,25 @@ export default function TabOneScreen() {
   const [plmenuVisible, setplmenuVisible] = useState(false)
   const [selectedpl, setselectedpl] = useState<Playlist_>()
   const [deltrackstoggle, setdeltrackstoggle] = useState(false)
+  const [playlistTrackIds, setPlaylistTrackIds] = useState<Record<number, string[]>>({});
 
   const RerenderPlaylists = async () => {
-    const result = await db
-      .select({
-        id: playlists.id,
-        name:playlists.name,
-      })
-      .from(playlists)
-      .leftJoin(tracks, eq(playlists.id, tracks.playlist))
-      .groupBy(playlists.id);
+      const result = await db
+          .select({ id: playlists.id, name: playlists.name })
+          .from(playlists)
+          .leftJoin(tracks, eq(playlists.id, tracks.playlist))
+          .groupBy(playlists.id);
 
-    setAllPlaylists(result);
+      setAllPlaylists(result);
+
+      const allTracks = await db.select({ id: tracks.id, playlist: tracks.playlist }).from(tracks);
+      const grouped: Record<number, string[]> = {};
+      for (const t of allTracks) {
+          if (t.playlist == null) continue;
+          if (!grouped[t.playlist]) grouped[t.playlist] = [];
+          grouped[t.playlist].push(t.id.toString());
+      }
+      setPlaylistTrackIds(grouped);
   };
 
   const fetchPlaylists = async () => {
@@ -249,18 +256,15 @@ export default function TabOneScreen() {
         <View className='gap-3 flex flex-col'>
 
           {allPlaylists.map((playlist) => (
-            <Link
-              key={playlist.id}
-              href={{
-                pathname: './playlist/[id]',
-                params: { id: playlist.id, title: playlist.name },
-              }}
-              asChild
-            >
-              <Pressable onLongPress={()=>{setplmenuVisible(true); setselectedpl(playlist)}}>
-                <Playlist ID={playlist.id}/>
-              </Pressable>
-            </Link>
+              <Link
+                  key={playlist.id}
+                  href={{ pathname: './playlist/[id]', params: { id: playlist.id, title: playlist.name } }}
+                  asChild
+              >
+                  <Pressable onLongPress={()=>{setplmenuVisible(true); setselectedpl(playlist)}}>
+                      <PlaylistRow playlist={playlist} trackIds={playlistTrackIds[playlist.id] ?? []} />
+                  </Pressable>
+              </Link>
           ))}
           <Pressable onPress={() => { if (!loading) setModalVisible(true); }} className='w-full p-4 rounded-[6px] border-2 border-black/70 border-dashed flex-row items-center px-6 '>
             <View className='flex flex-row justify-between items-center w-full'>
