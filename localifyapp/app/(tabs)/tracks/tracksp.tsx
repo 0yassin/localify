@@ -16,7 +16,7 @@ import { ActivityIndicator, Alert, FlatList, Modal, Pressable, Text, View } from
 import { Shadow } from "react-native-shadow-2";
 
 
-type BaseTrackRow = InferSelectModel<typeof tracks>;
+export type BaseTrackRow = InferSelectModel<typeof tracks>;
 
 
 export default function trackspage(){

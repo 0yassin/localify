@@ -3,12 +3,14 @@ import { db } from "@/db/client";
 import { tracks } from "@/db/schema";
 import { useDownloads } from "@/hooks/useDownloads";
 import { downloadStore } from "@/utils/DownloadStore";
+import { retryTrackDownload } from "@/utils/DownloadTracks";
+import { StorageUtil } from "@/utils/Storage";
 import { SyncDownloadWithDB } from "@/utils/SyncDownloadWithDB";
 import { Ionicons } from "@expo/vector-icons";
 import { type InferSelectModel, eq } from "drizzle-orm";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from "react-native";
 
 
 type BaseTrackRow = InferSelectModel<typeof tracks>;
@@ -20,6 +22,8 @@ export default function Playlistscreen() {
     const [tracklist, setTracklist] = useState<BaseTrackRow[]>([]);
     const [loading, setLoading] = useState(false);
     const downloads = useDownloads();
+    const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+    
     
 
     const fetchtracks = async () => {
@@ -40,6 +44,29 @@ export default function Playlistscreen() {
             setLoading(false);
         }
     };
+
+        const handlestartdownload = async (track:BaseTrackRow) => {
+            const folder = await StorageUtil.GetFolder()
+            if (!folder) {
+                Alert.alert('No folder set', 'Please set a download folder from the home screen first.');
+                return;
+            }
+            setDownloadingIds(prev => new Set(prev).add(track.id.toString()));
+    
+            try {
+                const result = await retryTrackDownload(track, folder);
+                if (!result.success) {
+                    Alert.alert('Download failed', `Couldn't download "${track.title}". Try again?`);
+                }
+                await fetchtracks();
+    
+            } finally {
+                setDownloadingIds(prev => {
+                const next = new Set(prev);
+                next.delete(track.id.toString());
+                return next;
+            });}
+        }
 
     useEffect(() => {
         fetchtracks();
@@ -98,6 +125,7 @@ export default function Playlistscreen() {
                                 onPausePress={() => downloadStore.pause(item.id)}
                                 onResumePress={() => downloadStore.resume(item.id)}
                                 onCancelPress={() => downloadStore.cancel(item.id)}
+                                onStartPress={() => handlestartdownload(item)}
                             />
                         )
                     }}

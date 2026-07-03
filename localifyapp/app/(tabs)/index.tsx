@@ -1,6 +1,8 @@
 import PlaylistRow from '@/components/PlaylistRow';
 import { db } from '@/db/client';
 import { playlists, tracks } from '@/db/schema';
+import { useDownloads } from '@/hooks/useDownloads';
+import { downloadStore } from '@/utils/DownloadStore';
 import { downloadAndStore, ManifestItem, resolveTrackLink } from '@/utils/DownloadTracks';
 import { Importplaylist } from '@/utils/Importplaylist';
 import { StorageUtil } from '@/utils/Storage';
@@ -12,6 +14,7 @@ import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Shadow } from 'react-native-shadow-2';
+import { BaseTrackRow } from './tracks/tracksp';
 
 const RESOLVE_CONCURRENCY = 4;
 const DOWNLOAD_CONCURRENCY = 3;
@@ -46,13 +49,18 @@ export default function TabOneScreen() {
   const [inputPlaylistUrl, setInputPlaylistUrl] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loadingStatus, setLoadingStatus] = useState('');
   const [allPlaylists, setAllPlaylists] = useState<Playlist_[]>([]);
   const [folder, setFolder] = useState<string | null>(null);
   const [plmenuVisible, setplmenuVisible] = useState(false)
   const [selectedpl, setselectedpl] = useState<Playlist_>()
   const [deltrackstoggle, setdeltrackstoggle] = useState(false)
   const [playlistTrackIds, setPlaylistTrackIds] = useState<Record<number, string[]>>({});
+  const [tracklist, setTracklist] = useState<BaseTrackRow[]>([]);
+  const downloads = useDownloads();
+  const activeDownloads = Object.entries(downloads).map(([trackId, entry]) => ({
+    trackId,
+    ...entry,
+  }));
 
   const RerenderPlaylists = async () => {
       const result = await db
@@ -75,6 +83,8 @@ export default function TabOneScreen() {
 
   const fetchPlaylists = async () => {
     try {
+      const result = await db.select().from(tracks); 
+      setTracklist(result);
       const changed = await SyncDownloadWithDB();
 
       await RerenderPlaylists();
@@ -96,12 +106,13 @@ export default function TabOneScreen() {
       }
 
       await fetchPlaylists();
+      const result = await db.select().from(tracks); 
+      setTracklist(result);
     }
     init();
   }, []);
 
   const handleAdd = async () => {
-    console.log('wdad')
     let activeFolder = folder;
     const cleanPlaylistUrl = inputPlaylistUrl.trim();
 
@@ -126,7 +137,6 @@ export default function TabOneScreen() {
 
     try {
       setLoading(true);
-      setLoadingStatus('Importing playlist track data...');
 
       await Importplaylist(cleanPlaylistUrl, () => {});
       await fetchPlaylists();
@@ -149,7 +159,6 @@ export default function TabOneScreen() {
         const manifestResults = await mapWithConcurrency(pendingTracks, RESOLVE_CONCURRENCY, async (track) => {
           const result = await resolveTrackLink(track);
           resolvedCount++;
-          setLoadingStatus(`Resolving links (Keep app open): ${resolvedCount}/${pendingTracks.length}`);
           return result;
         });
 
@@ -161,12 +170,14 @@ export default function TabOneScreen() {
           const downloadResults = await mapWithConcurrency(urlManifest, DOWNLOAD_CONCURRENCY, async (item) => {
             const result = await downloadAndStore(item, activeFolder as string);
             completedCount++;
-            setLoadingStatus(`Downloading: ${completedCount}/${urlManifest.length}`);
             return result;
           });
 
           downloadSuccesses = downloadResults.filter((r) => r.success).length;
           downloadFailures = downloadResults.filter((r) => !r.success).length;
+
+          const result = await db.select().from(tracks); 
+          setTracklist(result);
         }
 
         await fetchPlaylists();
@@ -195,38 +206,30 @@ export default function TabOneScreen() {
   };
 
   const handledelete = async () => {
-    fetchPlaylists()
-    SyncDownloadWithDB()
-    try{
-      if (!selectedpl) return
-        try{
-          await db.delete(playlists).where(eq(playlists.id, selectedpl.id))
-        }
-        catch (e){
-          console.log("playlist deleteion from db error:", e)
-        }
-        if(deltrackstoggle){
-          const del_queue = await db.select().from(tracks).where(eq(tracks.playlist, selectedpl.id))
-          for (const track of del_queue){
-            if (track.filename){
-              try{
-                await FileSystem.deleteAsync(track.filename)     
-              }
-              catch (e){
-                console.log("Track deletion from filesystem error:", e)
-              }
+    if (!selectedpl) return;
+    try {
+        const del_queue = await db.select().from(tracks).where(eq(tracks.playlist, selectedpl.id));
+        for (const track of del_queue) {
+            downloadStore.cancel(track.id.toString()); 
+            if (deltrackstoggle && track.filename) {
+                try {
+                    await FileSystem.deleteAsync(track.filename);
+                } catch (e) {
+                    console.log("Track deletion from filesystem error:", e);
+                }
             }
-            await db.delete(tracks).where(eq(tracks.id, track.id))           
-
-          }
+            if (deltrackstoggle) {
+                await db.delete(tracks).where(eq(tracks.id, track.id));
+            }
         }
+        await db.delete(playlists).where(eq(playlists.id, selectedpl.id));
+    } catch (e) {
+        console.error("Playlist deletion error:", e);
+        Alert.alert('Something went wrong', 'Could not fully delete the playlist.');
+    } finally {
+        await fetchPlaylists();
     }
-    catch (e){
-      console.error(e)
-    }
-    fetchPlaylists()
-    SyncDownloadWithDB()
-  }
+  };
 
   return (
     <View className='pt-16 px-6 bg-background h-full font-poppins flex flex-col'>
@@ -235,18 +238,23 @@ export default function TabOneScreen() {
         <Text className='text-[31px] font-poppinsBold'>Localify</Text>
       </View>
 
-      {loading? 
-        (<View className='text-[16px] w-full mb-8'>
-          <View className='bg-black pr-[3px] pl-[2px] pt-[2px] pb-[3px] rounded-[5px]'>
-            <View className='bg-white rounded-[3px] p-3'>
-              <Text className='font-poppins text-[16px] text-black'>{loadingStatus}</Text>
-            </View>
+      {activeDownloads.length > 0 && (
+          <View className='text-[16px] w-full mb-8'>
+              <View className='bg-black pr-[3px] pl-[2px] pt-[2px] pb-[3px] rounded-[5px]'>
+                  <View className='bg-white rounded-[3px] p-3 gap-1'>
+                      {activeDownloads.map((d) => {
+                          const track = tracklist.find(t => t.id.toString() === d.trackId);
+                          const pct = d.bytesTotal > 0 ? Math.round((d.bytesDownloaded / d.bytesTotal) * 100) : 0;
+                          return (
+                              <Text key={d.trackId} className='font-poppins text-[16px] text-black'>
+                                  {track?.title ?? d.trackId} - {d.status} ({pct}%)
+                              </Text>
+                          );
+                      })}
+                  </View>
+              </View>
           </View>
-
-        </View>)
-       : 
-        (<></>)
-      }
+      )}
 
       <View className=''>
         <View className='w-full flex justify-between flex-row items-center'>

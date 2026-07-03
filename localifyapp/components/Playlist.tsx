@@ -60,7 +60,9 @@ export default function Card({ID, isDownloading, activeCount}: CardProps){
        }
        load_data()
 
-    }, [ID])
+    }, [])
+
+    
     return(
     <View className="w-full">
     <Shadow stretch 
