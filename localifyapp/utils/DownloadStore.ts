@@ -54,10 +54,18 @@ export const downloadStore = {
         downloadMap[id]?.task.resume();
         this.setStatus(id, 'downloading');
     },
-    cancel(id: string) {
-        const entry = downloadMap[id];
-        if (!entry) return;
-        entry.task.stop();
-        this.remove(id);
+    cancel(id: string): Promise<void> {
+        return new Promise((resolve) => {
+            const entry = downloadMap[id];
+            if (!entry) {
+                resolve();
+                return;
+            }
+            entry.task.error(() => {});
+            entry.task.done(() => {}); 
+            entry.task.stop();
+            this.remove(id);
+            resolve();
+        });
     },
 }

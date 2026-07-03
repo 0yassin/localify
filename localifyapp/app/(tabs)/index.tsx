@@ -10,8 +10,8 @@ import { SyncDownloadWithDB } from '@/utils/SyncDownloadWithDB';
 import { and, eq } from 'drizzle-orm';
 import { Checkbox } from 'expo-checkbox';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Link } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Link, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Shadow } from 'react-native-shadow-2';
 import { BaseTrackRow } from './tracks/tracksp';
@@ -97,20 +97,18 @@ export default function TabOneScreen() {
     }
   };
 
-  useEffect(() => {
-    async function init() {
-      const savedpath = await StorageUtil.GetFolder();
-
-      if (savedpath) {
-        setFolder(savedpath);
-      }
-
-      await fetchPlaylists();
-      const result = await db.select().from(tracks); 
-      setTracklist(result);
-    }
-    init();
-  }, []);
+  useFocusEffect(
+      useCallback(() => {
+          async function init() {
+              const savedpath = await StorageUtil.GetFolder();
+              if (savedpath) {
+                  setFolder(savedpath);
+              }
+              await fetchPlaylists();
+          }
+          init();
+      }, [])
+  );
 
   const handleAdd = async () => {
     let activeFolder = folder;
@@ -206,29 +204,33 @@ export default function TabOneScreen() {
   };
 
   const handledelete = async () => {
-    if (!selectedpl) return;
-    try {
-        const del_queue = await db.select().from(tracks).where(eq(tracks.playlist, selectedpl.id));
-        for (const track of del_queue) {
-            downloadStore.cancel(track.id.toString()); 
-            if (deltrackstoggle && track.filename) {
-                try {
-                    await FileSystem.deleteAsync(track.filename);
-                } catch (e) {
-                    console.log("Track deletion from filesystem error:", e);
-                }
-            }
-            if (deltrackstoggle) {
-                await db.delete(tracks).where(eq(tracks.id, track.id));
-            }
-        }
-        await db.delete(playlists).where(eq(playlists.id, selectedpl.id));
-    } catch (e) {
-        console.error("Playlist deletion error:", e);
-        Alert.alert('Something went wrong', 'Could not fully delete the playlist.');
-    } finally {
-        await fetchPlaylists();
-    }
+      if (!selectedpl) return;
+      try {
+          const del_queue = await db.select().from(tracks).where(eq(tracks.playlist, selectedpl.id));
+          for (const track of del_queue) {
+              await downloadStore.cancel(track.id.toString());
+              if (deltrackstoggle && track.filename) {
+                  try {
+                      await FileSystem.deleteAsync(track.filename);
+                  } catch (e) {
+                      console.log("Track deletion from filesystem error:", e);
+                  }
+              }
+          }
+          await db.transaction(async (tx) => {
+              if (deltrackstoggle) {
+                  for (const track of del_queue) {
+                      await tx.delete(tracks).where(eq(tracks.id, track.id));
+                  }
+              }
+              await tx.delete(playlists).where(eq(playlists.id, selectedpl.id));
+          });
+      } catch (e) {
+          console.error("Playlist deletion error:", e);
+          Alert.alert('Something went wrong', 'Could not fully delete the playlist.');
+      } finally {
+          await fetchPlaylists();
+      }
   };
 
   return (

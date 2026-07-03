@@ -10,8 +10,8 @@ import { SyncDownloadWithDB } from "@/utils/SyncDownloadWithDB";
 import { Ionicons } from "@expo/vector-icons";
 import { eq, InferSelectModel } from "drizzle-orm";
 import * as Filesystem from 'expo-file-system/legacy';
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, Text, View } from "react-native";
 import { Shadow } from "react-native-shadow-2";
 
@@ -68,27 +68,36 @@ export default function trackspage(){
         });}
     }
 
-    useEffect(()=>{
-        fetchtracks()
-    }, [])
+
+    useFocusEffect(
+        useCallback(()=>{
+            fetchtracks()
+        }, [])
+    )
 
     const handledelete = async () => {
-        try{
-            const res = await db.select().from(tracks).where(eq(tracks.id, SelectedTrack)).limit(1)
-            if (res[0].filename){
-                await Filesystem.deleteAsync(res[0].filename)
+        try {
+            const res = await db.select().from(tracks).where(eq(tracks.id, SelectedTrack)).limit(1);
+            if (!res[0]) return;
+            await downloadStore.cancel(SelectedTrack);
+            if (res[0].filename) {
+                try {
+                    await Filesystem.deleteAsync(res[0].filename);
+                } catch (e) {
+                    console.log("File deletion error:", e);
+                }
             }
-            await db.delete(tracks).where(eq(tracks.id, SelectedTrack))
 
+            await db.delete(tracks).where(eq(tracks.id, SelectedTrack));
+        } catch (e) {
+            console.error("error while trying to delete track", e);
+            Alert.alert('Something went wrong', 'Could not delete the track.');
+        } finally {
+            setTrackModalLoading(false);
+            setTrackModalVisible(false);
+            await fetchtracks(); 
         }
-        catch (e){
-            console.error("error while trying to delete track", e)
-        }
-        finally{
-            setTrackModalLoading(false)
-            setTrackModalVisible(false)
-        }
-    }
+    };
     
     return(
         <View className="flex-1 bg-white px-6 pt-14">
