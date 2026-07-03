@@ -14,61 +14,51 @@ interface Trackprops {
     onStartPress?: () => void;
 }
 
+const ICON_SIZE = 28;
+
 const Track = React.memo(function Track({ Title, Downloaded, image, Artist, Progress, Status, onResumePress, onPausePress, onStartPress }: Trackprops) {
     return (
         <View className="w-full">
-
             <View className="absolute top-[2px] left-[2px] right-[-2px] bottom-[-2px] bg-black rounded-[6px]" />
-                <View className="w-full flex bg-card flex-row px-2 py-2 items-center gap-3 border-2 border-black rounded-[6px]">
-                    
-                    <Image 
-                        source={{ 
-                            uri: image || ''
-                        }} 
-                        className="h-[64px] border-black border-2 aspect-square rounded-[3px] bg-teal-800"
-                    />
-                    
-                    <View className="flex-1 ">
-                        <Text className="text-[18px] -mb-1 font-poppinsSemiBold" numberOfLines={1}>
-                            {Title}
-                        </Text>
-                        <Text className="text-[16px] font-poppinsMedium" numberOfLines={1}>
-                            {Artist}
-                        </Text>
-                    </View>
+            <View className="w-full flex bg-card flex-row px-2 py-2 items-center gap-3 border-2 border-black rounded-[6px]">
+                <Image 
+                    source={{ uri: image || '' }} 
+                    className="h-[64px] border-black border-2 aspect-square rounded-[3px] bg-teal-800"
+                />
 
-                    {Progress !== undefined && (
-                        <View className='max-w-[30px]'>
-                            <Text className="text-[16px] font-poppinsMedium" numberOfLines={1}>
-                                {Math.round(Progress * 100)}%
-                            </Text>
-                        </View>
-                    )}
-                    {
-                    Downloaded?
-                         <View className={`aspect-square h-[28px] rounded-full mr-2 $ bg-[#1DB954]`}/>   
-                        :
-
-                         <View>
-                            {Status === 'downloading' && (
-                                <Pressable onPress={onPausePress}>
-                                    <Image style={{ marginRight: 8, height: 28, width: 28 }} source={require("../assets/images/pause-icon.png")}/>
-                                </Pressable>
-                            )}
-                            {Status === 'paused' && (
-                                <Pressable onPress={onResumePress}>
-                                    <Image style={{ marginRight: 8, height: 28, width: 28 }} source={require("../assets/images/play-icon.png")}/>
-                                </Pressable>
-                            )}
-                            {!Status && (
-                                <Pressable onPress={onStartPress}>
-                                    <Image style={{ marginRight: 8, height: 28, width: 28 }} source={require("../assets/images/download-icon.png")}/>
-                                </Pressable>
-                            )}
-                         </View>
-                    }
-
+                <View className="flex-1">
+                    <Text className="text-[18px] -mb-1 font-poppinsSemiBold" numberOfLines={1}>
+                        {Title}
+                    </Text>
+                    <Text className="text-[16px] font-poppinsMedium" numberOfLines={1}>
+                        {Artist}
+                    </Text>
                 </View>
+
+                {Progress !== undefined && (
+                    <Text className="text-[16px] font-poppinsMedium w-[40px] text-right" numberOfLines={1}>
+                        {Math.round(Progress * 100)}%
+                    </Text>
+                )}
+
+                <View style={{ width: ICON_SIZE, height: ICON_SIZE }} className="items-center justify-center">
+                    {Downloaded ? (
+                        <View className="aspect-square h-[28px] w-[28px] rounded-full bg-[#1DB954]" />
+                    ) : Status === 'downloading' ? (
+                        <Pressable onPress={onPausePress}>
+                            <Image style={{ height: ICON_SIZE, width: ICON_SIZE, tintColor: '#161616' }} source={require("../assets/images/pause-icon.png")}/>
+                        </Pressable>
+                    ) : Status === 'paused' ? (
+                        <Pressable onPress={onResumePress}>
+                            <Image style={{ height: ICON_SIZE, width: ICON_SIZE, tintColor: '#161616' }} source={require("../assets/images/play-icon.png")}/>
+                        </Pressable>
+                    ) : (
+                        <Pressable onPress={onStartPress}>
+                            <Image style={{ height: ICON_SIZE, width: ICON_SIZE, tintColor: '#161616' }} source={require("../assets/images/download-icon.png")}/>
+                        </Pressable>
+                    )}
+                </View>
+            </View>
         </View>
     );
 });
