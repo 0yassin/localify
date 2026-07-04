@@ -2,7 +2,7 @@ import Playlist from '@/components/Playlist';
 import { usePlaylistDownloadStatus } from '@/hooks/usePlaylistDownloadStatus';
 
 interface Playlist_ {
-    id: number;
+    id: string;
     name: string;
 }
 

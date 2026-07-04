@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm';
 import * as FileSystem from 'expo-file-system/legacy';
 import { GetDirectLink } from './GetDirectLink';
 import { searchYoutube } from './SearchYT';
+import { withDbLock } from './dbMutex';
 
 export type ManifestItem = { trackId: string; title: string; directUrl: string };
 type DownloadResult = { success: boolean; title: string };
@@ -19,7 +20,7 @@ export async function resolveTrackLink(track: Track): Promise<ManifestItem | nul
     if (!ytUrl || ytUrl.length <= 1) {
       const vidID = await searchYoutube(`${track.title} - ${track.artist}`.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim());
       ytUrl = `https://www.youtube.com/watch?v=${vidID}`;
-      await db.update(tracks).set({ ytlink: ytUrl }).where(eq(tracks.id, track.id));
+      await withDbLock(()=>db.update(tracks).set({ ytlink: ytUrl }).where(eq(tracks.id, track.id)));
     }
 
     const directUrl = await GetDirectLink(ytUrl);
@@ -61,17 +62,18 @@ export function downloadAndStore(item: ManifestItem, activeFolder: string): Prom
             if (!fileInfo.exists) {
               throw new Error(`Download failed for track ${item.title}`);
             }
-            await db.update(tracks).set({ downloaded: true, filename: finalUri }).where(eq(tracks.id, item.trackId));
+            await withDbLock(() =>
+                db.update(tracks).set({ downloaded: true, filename: finalUri }).where(eq(tracks.id, item.trackId))
+            );            
             try {
               await FileSystem.deleteAsync(internalCachePath, { idempotent: true });
             } catch {}
           });
+          downloadStore.remove(item.trackId);
           resolve({ success: true, title: item.title });
         } catch (e) {
             console.error(`Failed to finalize download for ${item.title}:`, e);
             resolve({ success: false, title: item.title });
-        } finally {
-            downloadStore.remove(item.trackId);
         }
     });
 

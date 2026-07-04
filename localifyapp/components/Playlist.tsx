@@ -1,12 +1,13 @@
 import { db } from "@/db/client";
 import { playlists, tracks } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Image, Text, View } from "react-native";
 import { Shadow } from 'react-native-shadow-2';
 
 interface CardProps{
-    ID: number,
+    ID: string,
     isDownloading: boolean,
     activeCount: number,
 }
@@ -17,7 +18,7 @@ interface PlaylistData{
     DownloadedCount:number,
 }
 
-async function GetPlaylistData(ID:number){
+async function GetPlaylistData(ID:string){
     const trackres = await db.select().from(tracks).where(eq(tracks.playlist, ID))
     const trk_count = trackres.length
     const dwn_count = trackres.filter(track=>track.downloaded === true).length
@@ -44,9 +45,9 @@ async function GetPlaylistData(ID:number){
 export default function Card({ID, isDownloading, activeCount}: CardProps){
     const [Playlist, setPlaylist] = useState<PlaylistData>()
     const [loading, setloading] = useState(false)
-    useEffect(()=>{
-       async function load_data() {
-        if(!ID) return
+
+    async function load_data() {
+      if(!ID) return
         try{
             setloading(true)
             setPlaylist(await GetPlaylistData(ID))
@@ -57,10 +58,11 @@ export default function Card({ID, isDownloading, activeCount}: CardProps){
         finally {
             setloading(false)
         }
-       }
-       load_data()
+    }
 
-    }, [])
+    useFocusEffect(useCallback(()=>{
+        load_data()
+    },[]))
 
     
     return(

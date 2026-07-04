@@ -1,7 +1,7 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const playlists = sqliteTable('playlists', {
-    id: integer('id').primaryKey({autoIncrement:true}),
+    id: text('id').primaryKey().notNull().unique(),
     name: text('name').notNull(),
     url: text('url').notNull().unique(),
     lastChecked: text('last_checked'),
@@ -10,7 +10,7 @@ export const playlists = sqliteTable('playlists', {
 
 export const tracks = sqliteTable('tracks', {
     id: text('id').primaryKey().notNull().unique(),
-    playlist: integer('playlist').references(() => playlists.id, { onDelete: 'cascade' }),
+    playlist: text('playlist').references(() => playlists.id, { onDelete: 'cascade' }),
     downloaded: integer('downloaded', {mode:'boolean'}).default(false),
     title: text('title').notNull(),
     artist: text('artist'),

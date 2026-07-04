@@ -2,14 +2,15 @@ import Track from "@/components/Track";
 import { db } from "@/db/client";
 import { tracks } from "@/db/schema";
 import { useDownloads } from "@/hooks/useDownloads";
+import { withDbLock } from "@/utils/dbMutex";
 import { downloadStore } from "@/utils/DownloadStore";
 import { retryTrackDownload } from "@/utils/DownloadTracks";
 import { StorageUtil } from "@/utils/Storage";
 import { SyncDownloadWithDB } from "@/utils/SyncDownloadWithDB";
 import { Ionicons } from "@expo/vector-icons";
 import { type InferSelectModel, eq } from "drizzle-orm";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from "react-native";
 
 
@@ -23,6 +24,7 @@ export default function Playlistscreen() {
     const [loading, setLoading] = useState(false);
     const downloads = useDownloads();
     const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+    const prevDownloadingRef = useRef<Set<string>>(new Set());
     
     
 
@@ -31,10 +33,10 @@ export default function Playlistscreen() {
         try {
             SyncDownloadWithDB()
             setLoading(true);
-            const results = await db
+            const results = await withDbLock(()=>db
                 .select()
                 .from(tracks)
-                .where(eq(tracks.playlist, Number(id)));
+                .where(eq(tracks.playlist, id)));
 
             setTracklist(results);
             SyncDownloadWithDB()
@@ -71,6 +73,23 @@ export default function Playlistscreen() {
     useEffect(() => {
         fetchtracks();
     }, [id]);
+
+    useFocusEffect(useCallback(()=>{
+        fetchtracks()
+    }, []))
+
+    useEffect(() => {
+        const currentIds = new Set(Object.keys(downloads));
+        const prevIds = prevDownloadingRef.current;
+
+        const justFinished = [...prevIds].some(id => !currentIds.has(id));
+
+        prevDownloadingRef.current = currentIds;
+
+        if (justFinished) {
+            fetchtracks();
+        }
+    }, [downloads]);
 
     return (
         <View className="flex-1 bg-white px-6 pt-14">

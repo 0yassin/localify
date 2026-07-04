@@ -2,17 +2,17 @@ import PlaylistRow from '@/components/PlaylistRow';
 import { db } from '@/db/client';
 import { playlists, tracks } from '@/db/schema';
 import { useDownloads } from '@/hooks/useDownloads';
+import { withDbLock } from '@/utils/dbMutex';
 import { downloadStore } from '@/utils/DownloadStore';
 import { downloadAndStore, ManifestItem, resolveTrackLink } from '@/utils/DownloadTracks';
 import { Importplaylist } from '@/utils/Importplaylist';
 import { StorageUtil } from '@/utils/Storage';
-import { SyncDownloadWithDB } from '@/utils/SyncDownloadWithDB';
 import { and, eq } from 'drizzle-orm';
 import { Checkbox } from 'expo-checkbox';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Shadow } from 'react-native-shadow-2';
 import { BaseTrackRow } from './tracks/tracksp';
 
@@ -20,7 +20,7 @@ const RESOLVE_CONCURRENCY = 4;
 const DOWNLOAD_CONCURRENCY = 3;
 
 interface Playlist_ {
-  id: number,
+  id: string,
   name:string,
 }
 
@@ -54,7 +54,7 @@ export default function TabOneScreen() {
   const [plmenuVisible, setplmenuVisible] = useState(false)
   const [selectedpl, setselectedpl] = useState<Playlist_>()
   const [deltrackstoggle, setdeltrackstoggle] = useState(false)
-  const [playlistTrackIds, setPlaylistTrackIds] = useState<Record<number, string[]>>({});
+  const [playlistTrackIds, setPlaylistTrackIds] = useState<Record<string, string[]>>({});
   const [tracklist, setTracklist] = useState<BaseTrackRow[]>([]);
   const downloads = useDownloads();
   const activeDownloads = Object.entries(downloads).map(([trackId, entry]) => ({
@@ -62,39 +62,39 @@ export default function TabOneScreen() {
     ...entry,
   }));
 
-  const RerenderPlaylists = async () => {
-      const result = await db
-          .select({ id: playlists.id, name: playlists.name })
-          .from(playlists)
-          .leftJoin(tracks, eq(playlists.id, tracks.playlist))
-          .groupBy(playlists.id);
-
-      setAllPlaylists(result);
-
-      const allTracks = await db.select({ id: tracks.id, playlist: tracks.playlist }).from(tracks);
-      const grouped: Record<number, string[]> = {};
-      for (const t of allTracks) {
-          if (t.playlist == null) continue;
-          if (!grouped[t.playlist]) grouped[t.playlist] = [];
-          grouped[t.playlist].push(t.id.toString());
-      }
-      setPlaylistTrackIds(grouped);
-  };
-
   const fetchPlaylists = async () => {
-    try {
-      const result = await db.select().from(tracks); 
-      setTracklist(result);
-      const changed = await SyncDownloadWithDB();
+      try {
+          const [playlistRows, allTracks] = await withDbLock(() =>
+              Promise.all([
+                  db.select({ id: playlists.id, name: playlists.name })
+                      .from(playlists)
+                      .leftJoin(tracks, eq(playlists.id, tracks.playlist))
+                      .groupBy(playlists.id),
+                  db.select().from(tracks),
+              ])
+          );
 
-      await RerenderPlaylists();
+          setAllPlaylists(playlistRows);
+          setTracklist(allTracks);
 
-      if (changed) {
-        await RerenderPlaylists();
+          const grouped: Record<string, string[]> = {};
+          const downloadedCounts: Record<string, { downloaded: number; total: number }> = {};
+
+          for (const t of allTracks) {
+              if (t.playlist == null) continue;
+              if (!grouped[t.playlist]) grouped[t.playlist] = [];
+              grouped[t.playlist].push(t.id);
+
+              if (!downloadedCounts[t.playlist]) downloadedCounts[t.playlist] = { downloaded: 0, total: 0 };
+              downloadedCounts[t.playlist].total += 1;
+              if (t.downloaded) downloadedCounts[t.playlist].downloaded += 1;
+          }
+
+          setPlaylistTrackIds(grouped);
+          // setPlaylistDownloadCounts(downloadedCounts);
+      } catch (error) {
+          console.error('Failed to load local playlists:', error);
       }
-    } catch (error) {
-      console.error('Failed to load local playlists:', error);
-    }
   };
 
   useFocusEffect(
@@ -139,19 +139,23 @@ export default function TabOneScreen() {
       await Importplaylist(cleanPlaylistUrl, () => {});
       await fetchPlaylists();
 
-      const targetPlaylist = await db.query.playlists.findFirst({
+      const targetPlaylist = await withDbLock(()=>db.query.playlists.findFirst({
         where: eq(playlists.url, cleanPlaylistUrl),
-      });
+      }));
+
+      setInputPlaylistUrl('');
+      setModalVisible(false);
+      setLoading(false);
 
       let resolveFailures = 0;
       let downloadFailures = 0;
       let downloadSuccesses = 0;
 
       if (targetPlaylist) {
-        const pendingTracks = await db
+        const pendingTracks = await withDbLock(()=>db
           .select()
           .from(tracks)
-          .where(and(eq(tracks.playlist, targetPlaylist.id), eq(tracks.downloaded, false)));
+          .where(and(eq(tracks.playlist, targetPlaylist.id), eq(tracks.downloaded, false))));
 
         let resolvedCount = 0;
         const manifestResults = await mapWithConcurrency(pendingTracks, RESOLVE_CONCURRENCY, async (track) => {
@@ -159,6 +163,8 @@ export default function TabOneScreen() {
           resolvedCount++;
           return result;
         });
+
+
 
         const urlManifest = manifestResults.filter((item): item is ManifestItem => item !== null);
         resolveFailures = pendingTracks.length - urlManifest.length;
@@ -174,16 +180,13 @@ export default function TabOneScreen() {
           downloadSuccesses = downloadResults.filter((r) => r.success).length;
           downloadFailures = downloadResults.filter((r) => !r.success).length;
 
-          const result = await db.select().from(tracks); 
+          const result = await withDbLock(()=>db.select().from(tracks)); 
           setTracklist(result);
         }
 
         await fetchPlaylists();
       }
 
-      setInputPlaylistUrl('');
-      setModalVisible(false);
-      setLoading(false);
 
       const lines = [`${downloadSuccesses} track${downloadSuccesses === 1 ? '' : 's'} downloaded.`];
       if (resolveFailures > 0) {
@@ -206,9 +209,9 @@ export default function TabOneScreen() {
   const handledelete = async () => {
       if (!selectedpl) return;
       try {
-          const del_queue = await db.select().from(tracks).where(eq(tracks.playlist, selectedpl.id));
+          const del_queue = await withDbLock(()=>db.select().from(tracks).where(eq(tracks.playlist, selectedpl.id)))
           for (const track of del_queue) {
-              await downloadStore.cancel(track.id.toString());
+              await downloadStore.cancel(track.id);
               if (deltrackstoggle && track.filename) {
                   try {
                       await FileSystem.deleteAsync(track.filename);
@@ -217,14 +220,14 @@ export default function TabOneScreen() {
                   }
               }
           }
-          await db.transaction(async (tx) => {
+          await withDbLock(()=>db.transaction(async (tx) => {
               if (deltrackstoggle) {
                   for (const track of del_queue) {
                       await tx.delete(tracks).where(eq(tracks.id, track.id));
                   }
               }
               await tx.delete(playlists).where(eq(playlists.id, selectedpl.id));
-          });
+          }));
       } catch (e) {
           console.error("Playlist deletion error:", e);
           Alert.alert('Something went wrong', 'Could not fully delete the playlist.');
@@ -323,10 +326,16 @@ export default function TabOneScreen() {
                       style={{ borderRadius: 4, alignSelf: 'stretch' }}
                       containerStyle={{ width: '100%' }}
                     >
-                      <Pressable onPress={()=>{handleAdd();setModalVisible(false)}} className='bg-[#1DB954] border-2 text-[16px] font-poppinsMedium px-4 py-4 border-[#191414] rounded-[4px]'>
+                      <Pressable onPress={()=>{handleAdd()}} className='bg-[#1DB954] border-2 text-[16px] font-poppinsMedium px-4 py-4 border-[#191414] rounded-[4px]'>
+                        {loading? (
+                          <ActivityIndicator size={'large'} className='scale-[0.5]' />
+                        )
+                        :
                         <Text className='font-poppinsSemiBold text-[16px] mx-auto text-[#191414]'>
                           Add Playlist
                         </Text>
+                      }
+
                       </Pressable>
                     </Shadow>
                   </>

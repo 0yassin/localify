@@ -3,6 +3,7 @@ import Track from "@/components/Track";
 import { db } from "@/db/client";
 import { tracks } from "@/db/schema";
 import { useDownloads } from "@/hooks/useDownloads";
+import { withDbLock } from "@/utils/dbMutex";
 import { downloadStore } from "@/utils/DownloadStore";
 import { retryTrackDownload } from "@/utils/DownloadTracks";
 import { StorageUtil } from "@/utils/Storage";
@@ -11,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { eq, InferSelectModel } from "drizzle-orm";
 import * as Filesystem from 'expo-file-system/legacy';
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, Text, View } from "react-native";
 import { Shadow } from "react-native-shadow-2";
 
@@ -24,16 +25,17 @@ export default function trackspage(){
     const [loading, setLoading] = useState(false)
     const [TrackModalVisible, setTrackModalVisible] = useState(false)
     const [TrackModalLoading, setTrackModalLoading] = useState(false)
-    const [ActiveTasks, setActiveTasks] = useState<any>([])
     const [SelectedTrack, setSelectedTrack] = useState('')
     const downloads = useDownloads();
     const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+    const prevDownloadingRef = useRef<Set<string>>(new Set());
+    
 
     const fetchtracks = async () => {
         try{
             setLoading(true)
             SyncDownloadWithDB()
-            const result = await db.select().from(tracks)
+            const result = await withDbLock(()=>db.select().from(tracks))
             setTracklist(result)
         }
 
@@ -75,9 +77,19 @@ export default function trackspage(){
         }, [])
     )
 
+    useEffect(() => {
+        const currentIds = new Set(Object.keys(downloads));
+        const prevIds = prevDownloadingRef.current;
+        const justFinished = [...prevIds].some(id => !currentIds.has(id));
+        prevDownloadingRef.current = currentIds;
+        if (justFinished) {
+            fetchtracks();
+        }
+    }, [downloads]);
+
     const handledelete = async () => {
         try {
-            const res = await db.select().from(tracks).where(eq(tracks.id, SelectedTrack)).limit(1);
+            const res = await withDbLock(()=>db.select().from(tracks).where(eq(tracks.id, SelectedTrack)).limit(1));
             if (!res[0]) return;
             await downloadStore.cancel(SelectedTrack);
             if (res[0].filename) {
@@ -88,7 +100,7 @@ export default function trackspage(){
                 }
             }
 
-            await db.delete(tracks).where(eq(tracks.id, SelectedTrack));
+            await withDbLock(()=>db.delete(tracks).where(eq(tracks.id, SelectedTrack)));
         } catch (e) {
             console.error("error while trying to delete track", e);
             Alert.alert('Something went wrong', 'Could not delete the track.');
