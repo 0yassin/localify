@@ -1,17 +1,13 @@
-
 type DownloadStatus = 'pending' | 'downloading' | 'paused' | 'done' | 'error';
-
-
 type DownloadEntry = {
     task: any; 
     bytesDownloaded: number;
     bytesTotal: number;
     status: DownloadStatus;
 };
-
 let downloadMap: Record<string, DownloadEntry> = {}
-
 const listeners = new Set<() => void>()
+
 function emitChange(){
     listeners.forEach((l) => l())
 }
@@ -46,13 +42,28 @@ export const downloadStore = {
         downloadMap = rest;
         emitChange();
     },
-    pause(id: string) {
-        downloadMap[id]?.task.pause();
-        this.setStatus(id, 'paused');
+    async pause(id: string) {
+        const entry = downloadMap[id];
+        if (!entry) return;
+        try {
+            await entry.task.pause();
+            this.setStatus(id, 'paused');
+        } catch (e) {
+            console.error(`Failed to pause download ${id}:`, e);
+        }
     },
-    resume(id: string) {
-        downloadMap[id]?.task.resume();
-        this.setStatus(id, 'downloading');
+    async resume(id: string) {
+        const entry = downloadMap[id];
+        if (!entry) return;
+        const start = Date.now()
+        console.log(`resume requested: for ${id} at ${start}`)
+        try {
+            await entry.task.resume();
+            console.log(`[resume] task.resume() resolved for ${id} after ${Date.now() - start}ms`);          
+            this.setStatus(id, 'downloading');
+        } catch (e) {
+            console.error(`Failed to resume download ${id}:`, e);      
+        }
     },
     cancel(id: string): Promise<void> {
         return new Promise((resolve) => {

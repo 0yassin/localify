@@ -3,6 +3,7 @@ import { playlists, tracks } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { Alert } from 'react-native';
 import z from 'zod';
+import { withDbLock } from './dbMutex';
 
 const urlscheme = z.url().refine(
     (url) => url.includes('open.spotify.com/playlist/'),
@@ -61,43 +62,47 @@ export async function Importplaylist(spotifyurl: string, setIsSubmitting: (loadi
             return;
         }
 
-        await db.transaction(async (tx) => {
-            const existingPlaylist = await tx.query.playlists.findFirst({
-                where: eq(playlists.id, playlistId),
-            });
-
-            if (existingPlaylist) {
-                await tx.update(playlists)
-                    .set({
-                        lastChecked: new Date().toISOString(),
-                        name: json.playlist_name,
-                        icon: json.icon,
-                    })
-                    .where(eq(playlists.id, playlistId));
-            } else {
-                await tx.insert(playlists).values({
-                    id: playlistId,
-                    name: json.playlist_name,
-                    url: spotifyurl,
-                    lastChecked: new Date().toISOString(),
-                    icon: json.icon,
+        await withDbLock(() =>
+            db.transaction(async (tx) => {
+                const existingPlaylist = await tx.query.playlists.findFirst({
+                    where: eq(playlists.id, playlistId),
                 });
-            }
 
-            const payload = fetched_tracks.map((track) => ({
-                id: track.id,
-                playlist: playlistId,
-                downloaded: false,
-                title: track.title,
-                artist: track.artist,
-                filename: null,
-                image: track.image,
-            }));
+                if (existingPlaylist) {
+                    await tx.update(playlists)
+                        .set({
+                            lastChecked: new Date().toISOString(),
+                            name: json.playlist_name,
+                            icon: json.icon,
+                        })
+                        .where(eq(playlists.id, playlistId));
+                } else {
+                    await tx.insert(playlists).values({
+                        id: playlistId,
+                        name: json.playlist_name,
+                        url: spotifyurl,
+                        lastChecked: new Date().toISOString(),
+                        icon: json.icon,
+                    }).onConflictDoNothing({ target: playlists.id }); 
+                }
 
-            await tx.insert(tracks)
-                .values(payload)
-                .onConflictDoNothing({ target: tracks.id });
-        });
+                const payload = fetched_tracks.map((track) => ({
+                    id: track.id,
+                    playlist: playlistId,
+                    downloaded: false,
+                    title: track.title,
+                    artist: track.artist,
+                    filename: null,
+                    image: track.image,
+                }));
+
+                await tx.insert(tracks)
+                    .values(payload)
+                    .onConflictDoNothing({ target: tracks.id });
+            })
+        );
+
+        ;
     } catch (error) {
         console.error(`Playlist import pipeline failed: apiurl ${API_URL}`, error);
         Alert.alert("Import Error", "Something went wrong while connecting to your server or database.");

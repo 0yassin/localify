@@ -1,5 +1,6 @@
 import { db } from "@/db/client";
 import { playlists, tracks } from "@/db/schema";
+import { withDbLock } from "@/utils/dbMutex";
 import { eq } from "drizzle-orm";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
@@ -19,17 +20,18 @@ interface PlaylistData{
 }
 
 async function GetPlaylistData(ID:string){
-    const trackres = await db.select().from(tracks).where(eq(tracks.playlist, ID))
+    const trackres = await withDbLock(()=>db.select().from(tracks).where(eq(tracks.playlist, ID)))
     const trk_count = trackres.length
     const dwn_count = trackres.filter(track=>track.downloaded === true).length
 
-    const [result] = await db
+    const [result] = await withDbLock(()=>db
         .select({
             Title:playlists.name,
             Image:playlists.icon,
         })
         .from(playlists)
         .where(eq(playlists.id, ID))
+    )
 
     const pl_data: PlaylistData = {
         Title: result.Title,
