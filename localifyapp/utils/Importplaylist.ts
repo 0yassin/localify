@@ -10,7 +10,7 @@ const urlscheme = z.url().refine(
     { message: "Must be a valid Spotify playlist link" }
 );
 
-interface SpotifyTrackResponse {
+export interface SpotifyTrackResponse {
     id: string;
     title: string;
     artist: string;

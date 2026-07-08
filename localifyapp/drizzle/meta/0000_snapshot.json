@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "eb637397-0a4b-4fd0-b585-d97f931efe28",
+  "id": "b34cd59f-09b0-40de-a1a7-a9d80728549e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "playlists": {
@@ -9,10 +9,10 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "autoincrement": false
         },
         "name": {
           "name": "name",
@@ -41,9 +41,24 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "synced": {
+          "name": "synced",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
         }
       },
       "indexes": {
+        "playlists_id_unique": {
+          "name": "playlists_id_unique",
+          "columns": [
+            "id"
+          ],
+          "isUnique": true
+        },
         "playlists_url_unique": {
           "name": "playlists_url_unique",
           "columns": [
@@ -69,7 +84,7 @@
         },
         "playlist": {
           "name": "playlist",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

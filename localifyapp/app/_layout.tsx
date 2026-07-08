@@ -18,6 +18,9 @@ import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import { SQLiteProvider } from 'expo-sqlite';
 
 import { DATABASE_NAME, db } from "@/db/client";
+import { RegisterBackgroundSync } from "@/tasks/backgroundsync";
+import { reattachExistingDownloads } from "@/utils/DownloadTracks";
+import { StorageUtil } from "@/utils/Storage";
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -28,6 +31,19 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+    useEffect(() => {
+        RegisterBackgroundSync(60); 
+    }, []);
+    useEffect(() => {
+        async function init() {
+            const folder = await StorageUtil.GetFolder();
+            if (folder) {
+                await reattachExistingDownloads(folder);
+            }
+        }
+        init();
+    }, []);
+    
   const [fontsLoaded, fontError] = useFonts({
     'Poppins-Regular': Poppins_400Regular,
     'Poppins-Medium': Poppins_500Medium,

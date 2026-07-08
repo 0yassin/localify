@@ -4,10 +4,11 @@ import { playlists, tracks } from '@/db/schema';
 import { useDownloads } from '@/hooks/useDownloads';
 import { withDbLock } from '@/utils/dbMutex';
 import { downloadStore } from '@/utils/DownloadStore';
-import { downloadAndStore, ManifestItem, resolveTrackLink } from '@/utils/DownloadTracks';
+import { downloadPendingTracksForPlaylist } from '@/utils/DownloadTracks';
 import { Importplaylist } from '@/utils/Importplaylist';
+import { Refetchplaylists } from '@/utils/Refetchplaylists';
 import { StorageUtil } from '@/utils/Storage';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { Checkbox } from 'expo-checkbox';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Link, useFocusEffect } from 'expo-router';
@@ -16,34 +17,11 @@ import { ActivityIndicator, Alert, Modal, Pressable, Text, TextInput, View } fro
 import { Shadow } from 'react-native-shadow-2';
 import { BaseTrackRow } from './tracks/tracksp';
 
-const RESOLVE_CONCURRENCY = 4;
-const DOWNLOAD_CONCURRENCY = 3;
 
 interface Playlist_ {
   id: string,
   name:string,
 }
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let cursor = 0;
-
-  async function worker() {
-    while (cursor < items.length) {
-      const current = cursor++;
-      results[current] = await fn(items[current], current);
-    }
-  }
-  const workerCount = Math.max(1, Math.min(limit, items.length));
-  await Promise.all(Array.from({ length: workerCount }, worker));
-  return results;
-}
-
-
 
 export default function TabOneScreen() {
   const [inputPlaylistUrl, setInputPlaylistUrl] = useState('');
@@ -64,6 +42,7 @@ export default function TabOneScreen() {
 
   const fetchPlaylists = async () => {
       try {
+          const syncResult = await Refetchplaylists();
           const [playlistRows, allTracks] = await withDbLock(() =>
               Promise.all([
                   db.select({ id: playlists.id, name: playlists.name })
@@ -95,115 +74,86 @@ export default function TabOneScreen() {
       } catch (error) {
           console.error('Failed to load local playlists:', error);
       }
-  };
+    };
 
-  useFocusEffect(
-      useCallback(() => {
-          async function init() {
-              const savedpath = await StorageUtil.GetFolder();
-              if (savedpath) {
-                  setFolder(savedpath);
-              }
+    useFocusEffect(
+        useCallback(() => {
+            async function init() {
+                const savedpath = await StorageUtil.GetFolder();
+                if (savedpath) {
+                    setFolder(savedpath);
+                }
+                await fetchPlaylists();
+            }
+            init();
+        }, [])
+    );
+
+    const handleAdd = async () => {
+      let activeFolder = folder;
+      const cleanPlaylistUrl = inputPlaylistUrl.trim();
+
+      if (!activeFolder) {
+          const dbFolderCheck = await StorageUtil.GetFolder();
+          if (dbFolderCheck) {
+              activeFolder = dbFolderCheck;
+              setFolder(dbFolderCheck);
+          }
+      }
+      if (!activeFolder) {
+          const picked_path = await StorageUtil.SaveFolder();
+          if (!picked_path) {
+              Alert.alert('Pick a folder', 'Please pick a download folder, this is where your music will be stored.');
+              return;
+          }
+          activeFolder = picked_path;
+          setFolder(picked_path);
+      }
+
+      if (!cleanPlaylistUrl) return;
+
+      try {
+          setLoading(true);
+
+          await Importplaylist(cleanPlaylistUrl, () => {});
+          await fetchPlaylists();
+
+          const targetPlaylist = await withDbLock(() => db.query.playlists.findFirst({
+              where: eq(playlists.url, cleanPlaylistUrl),
+          }));
+
+          setInputPlaylistUrl('');
+          setModalVisible(false);
+          setLoading(false);
+
+          let resolveFailures = 0;
+          let downloadFailures = 0;
+          let downloadSuccesses = 0;
+
+          if (targetPlaylist) {
+              const result = await downloadPendingTracksForPlaylist(targetPlaylist.id, activeFolder as string);
+              resolveFailures = result.resolveFailures;
+              downloadFailures = result.downloadFailures;
+              downloadSuccesses = result.downloadSuccesses;
+
               await fetchPlaylists();
           }
-          init();
-      }, [])
-  );
 
-  const handleAdd = async () => {
-    let activeFolder = folder;
-    const cleanPlaylistUrl = inputPlaylistUrl.trim();
-
-    if (!activeFolder) {
-      const dbFolderCheck = await StorageUtil.GetFolder();
-      if (dbFolderCheck) {
-        activeFolder = dbFolderCheck;
-        setFolder(dbFolderCheck);
+          const lines = [`${downloadSuccesses} track${downloadSuccesses === 1 ? '' : 's'} downloaded.`];
+          if (resolveFailures > 0) {
+              lines.push(`${resolveFailures} track${resolveFailures === 1 ? '' : 's'} couldn't be matched to a source.`);
+          }
+          if (downloadFailures > 0) {
+              lines.push(`${downloadFailures} download${downloadFailures === 1 ? '' : 's'} failed.`);
+          }
+          Alert.alert('Sync complete', lines.join('\n'));
+      } catch (err) {
+          setModalVisible(false);
+          setLoading(false);
+          setInputPlaylistUrl('');
+          console.error(err);
+          Alert.alert('Something went wrong', 'An unexpected error occurred during sync initialization.');
       }
-    }
-    if (!activeFolder) {
-      const picked_path = await StorageUtil.SaveFolder();
-      if (!picked_path) {
-        Alert.alert('Pick a folder', 'Please pick a download folder, this is where your music will be stored.');
-        return;
-      }
-      activeFolder = picked_path;
-      setFolder(picked_path);
-    }
-
-    if (!cleanPlaylistUrl) return;
-
-    try {
-      setLoading(true);
-
-      await Importplaylist(cleanPlaylistUrl, () => {});
-      await fetchPlaylists();
-
-      const targetPlaylist = await withDbLock(()=>db.query.playlists.findFirst({
-        where: eq(playlists.url, cleanPlaylistUrl),
-      }));
-
-      setInputPlaylistUrl('');
-      setModalVisible(false);
-      setLoading(false);
-
-      let resolveFailures = 0;
-      let downloadFailures = 0;
-      let downloadSuccesses = 0;
-
-      if (targetPlaylist) {
-        const pendingTracks = await withDbLock(()=>db
-          .select()
-          .from(tracks)
-          .where(and(eq(tracks.playlist, targetPlaylist.id), eq(tracks.downloaded, false))));
-
-        let resolvedCount = 0;
-        const manifestResults = await mapWithConcurrency(pendingTracks, RESOLVE_CONCURRENCY, async (track) => {
-          const result = await resolveTrackLink(track);
-          resolvedCount++;
-          return result;
-        });
-
-
-
-        const urlManifest = manifestResults.filter((item): item is ManifestItem => item !== null);
-        resolveFailures = pendingTracks.length - urlManifest.length;
-
-        if (urlManifest.length >= 0) {
-          let completedCount = 0;
-          const downloadResults = await mapWithConcurrency(urlManifest, DOWNLOAD_CONCURRENCY, async (item) => {
-            const result = await downloadAndStore(item, activeFolder as string);
-            completedCount++;
-            return result;
-          });
-
-          downloadSuccesses = downloadResults.filter((r) => r.success).length;
-          downloadFailures = downloadResults.filter((r) => !r.success).length;
-
-          const result = await withDbLock(()=>db.select().from(tracks)); 
-          setTracklist(result);
-        }
-
-        await fetchPlaylists();
-      }
-
-
-      const lines = [`${downloadSuccesses} track${downloadSuccesses === 1 ? '' : 's'} downloaded.`];
-      if (resolveFailures > 0) {
-        lines.push(`${resolveFailures} track${resolveFailures === 1 ? '' : 's'} couldn't be matched to a source.`);
-      }
-      if (downloadFailures > 0) {
-        lines.push(`${downloadFailures} download${downloadFailures === 1 ? '' : 's'} failed.`);
-      }
-      Alert.alert('Sync complete', lines.join('\n'));
-      fetchPlaylists()
-    } catch (err) {
-      setModalVisible(false);
-      setLoading(false);
-      setInputPlaylistUrl('');
-      console.error(err);
-      Alert.alert('Something went wrong', 'An unexpected error occurred during sync initialization.');
-    }
   };
 
   const handledelete = async () => {
@@ -285,7 +235,12 @@ export default function TabOneScreen() {
               <Text className='text-[21px] font-poppinsMedium  text-textColor/70'>+</Text>
             </View>
           </Pressable>
-          <Link href={'./tracks/tracksp'}><Text>Helo</Text></Link>
+          <Link href={'./tracks/tracksp'} className='w-full p-4 rounded-[6px] border-2 border-black/70 border-dashed flex-row items-center px-6 '>
+            <View className='flex flex-row justify-between items-center w-full'>
+              <Text className='text-[18px] font-poppinsMedium text-textColor/70  '>All tracks</Text>
+              <Text className='text-[21px] font-poppinsMedium  text-textColor/70'>{'>'}</Text>
+            </View>
+          </Link>
         </View>
         <Modal
           animationType='fade'

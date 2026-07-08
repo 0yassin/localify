@@ -6,6 +6,7 @@ export const playlists = sqliteTable('playlists', {
     url: text('url').notNull().unique(),
     lastChecked: text('last_checked'),
     icon: text('icon'),
+    synced: integer('synced', {mode:'boolean'}).default(true).notNull()
 })
 
 export const tracks = sqliteTable('tracks', {

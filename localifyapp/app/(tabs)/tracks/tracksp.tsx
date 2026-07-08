@@ -146,7 +146,7 @@ export default function trackspage(){
                     keyExtractor={(item) => item.id.toString()} 
                     ListEmptyComponent={
                         <Text className="text-zinc-400 font-poppinsMedium text-center mt-12">
-                            No tracks imported in this playlist yet.
+                            No tracks imported yet.
                         </Text>
                     } 
                     contentContainerStyle={{ paddingBottom: 60, gap: 10 }}

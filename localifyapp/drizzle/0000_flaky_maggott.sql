@@ -1,15 +1,17 @@
 CREATE TABLE `playlists` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
 	`url` text NOT NULL,
 	`last_checked` text,
-	`icon` text
+	`icon` text,
+	`synced` integer DEFAULT true NOT NULL
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `playlists_id_unique` ON `playlists` (`id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `playlists_url_unique` ON `playlists` (`url`);--> statement-breakpoint
 CREATE TABLE `tracks` (
 	`id` text PRIMARY KEY NOT NULL,
-	`playlist` integer,
+	`playlist` text,
 	`downloaded` integer DEFAULT false,
 	`title` text NOT NULL,
 	`artist` text,
