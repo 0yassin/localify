@@ -62,6 +62,11 @@ def get_audio_stream(url: str) -> dict:
         'format':'bestaudio/best',
         'quiet':True,
         'no_warnings':True,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['tv_downgraded', 'android_vr', 'web_creator']
+            }
+        },
 
         "http_headers":{
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -72,6 +77,7 @@ def get_audio_stream(url: str) -> dict:
 
     with yt_dlp.YoutubeDL(ydl_config) as ydl:
         try:
+            ydl.cache.remove()
             info = ydl.extract_info(url, download=False)
             return {
                 "stream_url": info['url'],
