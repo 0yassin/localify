@@ -10,3 +10,4 @@ Localify is an app designed to help you locally save your playlists on spotify, 
 ## Note 
 - the playlist size is capped at around 100 at the moment because of limitations in the spotify fetch approach
 
+![Screenshot from app](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot)
