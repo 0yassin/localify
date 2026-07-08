@@ -171,6 +171,11 @@ def search(q: str = Query(..., description="Search query to search YT for")):
         'quiet': True,
         'no_warnings': True,
         'default_search': 'ytsearch1',
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['tv_downgraded', 'android_vr', 'web_creator']
+            }
+        },
     }
     try:
         with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
