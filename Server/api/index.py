@@ -58,6 +58,13 @@ async def fetch_playlist(payload:dict):
         )
 
 def get_audio_stream(url: str) -> dict:
+    cookie_data = os.getenv("YT_COOKIES")
+    temp_cookie_file = None
+    if cookie_data:
+        temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
+        temp_cookie_file.write(cookie_data)
+        temp_cookie_file.close()
+        ydl_config['cookiefile'] = temp_cookie_file.name
     ydl_config = {
         'format':'bestaudio/best',
         'quiet':True,
@@ -89,6 +96,9 @@ def get_audio_stream(url: str) -> dict:
                 status_code=400,
                 detail=f"Failed to extract yt metadata; {str(e)}"
             )
+        finally: 
+            if temp_cookie_file and os.path.exists(temp_cookie_file.name):
+                os.unlink(temp_cookie_file.name)
 
 
 @app.get("/api/download")
@@ -167,6 +177,13 @@ def extract_video_id(result) -> Optional[str]:
 
 @app.get("/api/search")
 def search(q: str = Query(..., description="Search query to search YT for")):
+    cookie_data = os.getenv("YT_COOKIES")
+    temp_cookie_file = None
+    if cookie_data:
+        temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
+        temp_cookie_file.write(cookie_data)
+        temp_cookie_file.close()
+        ydl_config['cookiefile'] = temp_cookie_file.name
     ytdl_opts = {
         'quiet': True,
         'no_warnings': True,
@@ -188,3 +205,6 @@ def search(q: str = Query(..., description="Search query to search YT for")):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if temp_cookie_file and os.path.exists(temp_cookie_file.name):
+            os.unlink(temp_cookie_file.name)
