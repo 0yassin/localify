@@ -1,15 +1,12 @@
-import os
 import re
-import tempfile
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import StreamingResponse
 import httpx
-import yt_dlp
-from pydantic import BaseModel
-
 import scraper
+import yt_dlp  
+from typing import Optional, List
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from fastapi.concurrency import run_in_threadpool 
 
 app = FastAPI()
 
@@ -30,46 +27,30 @@ class ErrorResponse(BaseModel):
     status: str
     errordetail: str
 
-@app.get("/")
-def home_health_check():
-    return {"status": "online", "message": "Localify"}
-
 @app.post("/api/playlist/fetch")
 async def fetch_playlist(payload: dict):
-    spotify_url = payload.get("url") 
-    
+    spotify_url = payload.get("url")  
     try:
         playlist = await scraper.get_playlist(spotify_url)
-
         if playlist is None:
-            return ErrorResponse(
-                status="error",
-                errordetail="Failed to fetch playlist"
-            )
-
+            return ErrorResponse(status="error", errordetail="Failed to fetch playlist")
         return PlaylistResponse(
             status="success",
             playlist_name=str(playlist.get("playlist_name") or "Untitled Playlist"),
             icon=str(playlist.get("icon")),
             tracks=playlist["tracks"]
         )
-
     except Exception as e:
-        return ErrorResponse(
-            status="error",
-            errordetail=f"Server processing failure: {str(e)}"
-        )
+        return ErrorResponse(status="error", errordetail=f"Server processing failure: {str(e)}")
+
 
 def get_audio_stream(url: str) -> dict:
     ydl_config = {
         'format': 'bestaudio/best',
         'quiet': True,
         'no_warnings': True,
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['tv_downgraded', 'android_vr', 'web_creator']
-            }
-        },
+        'cookiefile': 'cookies.txt',
+        'proxy': 'socks5://127.0.0.1:1080',
         "http_headers": {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -77,42 +58,30 @@ def get_audio_stream(url: str) -> dict:
         }
     }
 
-    cookie_data = os.getenv("YT_COOKIES")
-    temp_cookie_file = None
-    if cookie_data:
-        cookie_data = cookie_data.replace('\\n', '\n').replace('\\t', '\t')
-        print(f"DEBUG: Active Cookie Line Count -> {len(cookie_data.splitlines())}")
-        
-        temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
-        temp_cookie_file.write(cookie_data)
-        temp_cookie_file.close()
-        ydl_config['cookiefile'] = temp_cookie_file.name  
-
     with yt_dlp.YoutubeDL(ydl_config) as ydl:
         try:
-            ydl.cache.remove()
             info = ydl.extract_info(url, download=False)
             return {
                 "stream_url": info['url'],
                 "title": info.get('title', 'audio_track'),
-                "headers": info.get('http_headers', {})
+                "headers": info.get('http_headers', {}),
+                "filesize": info.get('filesize') or info.get('filesize_approx') 
             }
         except Exception as e:
             raise HTTPException(
                 status_code=400,
                 detail=f"Failed to extract yt metadata; {str(e)}"
             )
-        finally: 
-            if temp_cookie_file and os.path.exists(temp_cookie_file.name):
-                os.unlink(temp_cookie_file.name)
 
 @app.get("/api/download")
 async def download_audio_stream(url: str = Query(..., description="full youtube video link")):
     data = await run_in_threadpool(get_audio_stream, url)
     stream_url = data["stream_url"]
     headers = data["headers"]
+
     timeout_config = httpx.Timeout(connect=15.0, read=None, write=30.0, pool=30.0)
-    client = httpx.AsyncClient(timeout=timeout_config)
+    client = httpx.AsyncClient(timeout=timeout_config, proxy="socks5://127.0.0.1:1080")
+
     try:
         request = client.build_request("GET", stream_url, headers=headers)
         response = await client.send(request, stream=True)
@@ -134,8 +103,8 @@ async def download_audio_stream(url: str = Query(..., description="full youtube 
             detail=f"Failed: {str(e)}"
         )
 
-    total_bytes = response.headers.get("content-length")
-    
+    total_bytes = response.headers.get("content-length") or data.get("filesize")
+
     async def stream_pipe():
         try:
             async for bin_chunk in response.aiter_bytes(chunk_size=65536):
@@ -153,9 +122,8 @@ async def download_audio_stream(url: str = Query(..., description="full youtube 
         "Cache-Control": "no-cache",
         "Connection": "keep-alive"
     }
-
     if total_bytes:
-        _headers["Content-Length"] = total_bytes
+        _headers["Content-Length"] = str(total_bytes)
 
     return StreamingResponse(
         stream_pipe(),
@@ -164,7 +132,6 @@ async def download_audio_stream(url: str = Query(..., description="full youtube 
     )
 
 def extract_video_id(result) -> Optional[str]:
-    print(f"DEBUG extract_video_id called, result: {result}")
     if not result:
         return None
     entries = result.get('entries')
@@ -185,24 +152,9 @@ def search(q: str = Query(..., description="Search query to search YT for")):
         'quiet': True,
         'no_warnings': True,
         'default_search': 'ytsearch1',
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['tv_downgraded', 'android_vr', 'web_creator']
-            }
-        },
+        'cookiefile': 'cookies.txt',
+        'proxy': 'socks5://127.0.0.1:1080'
     }
-
-    cookie_data = os.getenv("YT_COOKIES")
-    temp_cookie_file = None
-    if cookie_data:
-        cookie_data = cookie_data.replace('\\n', '\n').replace('\\t', '\t')
-        print(f"DEBUG: Active Cookie Line Count -> {len(cookie_data.splitlines())}")
-        
-        temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
-        temp_cookie_file.write(cookie_data)
-        temp_cookie_file.close()
-        ytdl_opts['cookiefile'] = temp_cookie_file.name 
-
     try:
         with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
             result = ydl.extract_info(q, download=False)
@@ -214,6 +166,3 @@ def search(q: str = Query(..., description="Search query to search YT for")):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        if temp_cookie_file and os.path.exists(temp_cookie_file.name):
-            os.unlink(temp_cookie_file.name)

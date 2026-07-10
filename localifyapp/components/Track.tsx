@@ -37,7 +37,7 @@ const Track = React.memo(function Track({ Title, Downloaded, image, Artist, Prog
 
                 {Progress !== undefined && (
                     <Text className="text-[16px] font-poppinsMedium w-[40px] text-right" numberOfLines={1}>
-                        {Math.round(Progress * 100)}%
+                        {Status}
                     </Text>
                 )}
 

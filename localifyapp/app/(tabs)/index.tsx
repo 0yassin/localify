@@ -202,7 +202,7 @@ export default function TabOneScreen() {
                           const pct = d.bytesTotal > 0 ? Math.round((d.bytesDownloaded / d.bytesTotal) * 100) : 0;
                           return (
                               <Text key={d.trackId} className='font-poppins text-[16px] text-black'>
-                                  {track?.title ?? d.trackId} - {d.status} ({pct}%)
+                                  {track?.title ?? d.trackId} - {d.status}
                               </Text>
                           );
                       })}

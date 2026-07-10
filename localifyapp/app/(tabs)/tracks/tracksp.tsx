@@ -110,6 +110,7 @@ export default function trackspage(){
             await fetchtracks(); 
         }
     };
+
     
     return(
         <View className="flex-1 bg-white px-6 pt-14">
