@@ -76,6 +76,7 @@ def get_audio_stream(url: str) -> dict:
     cookie_data = os.getenv("YT_COOKIES")
     temp_cookie_file = None
     if cookie_data:
+        cookie_data = cookie_data.replace('\\n', '\n').replace('\\t', '\t')
         temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
         temp_cookie_file.write(cookie_data)
         temp_cookie_file.close()
@@ -188,6 +189,7 @@ def search(q: str = Query(..., description="Search query to search YT for")):
     cookie_data = os.getenv("YT_COOKIES")
     temp_cookie_file = None
     if cookie_data:
+        cookie_data = cookie_data.replace('\\n', '\n').replace('\\t', '\t')
         temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
         temp_cookie_file.write(cookie_data)
         temp_cookie_file.close()
