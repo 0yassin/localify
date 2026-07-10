@@ -73,15 +73,18 @@ def get_audio_stream(url: str) -> dict:
         }
     }
 
-    cookie_data = os.getenv("YT_COOKIES")
+cookie_data = os.getenv("YT_COOKIES")
     temp_cookie_file = None
     if cookie_data:
-        print("COOKIE DATA TRUE")
         cookie_data = cookie_data.replace('\\n', '\n').replace('\\t', '\t')
+        
+        print(f"DEBUG: Active Cookie Line Count -> {len(cookie_data.splitlines())}")
+        
         temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
         temp_cookie_file.write(cookie_data)
         temp_cookie_file.close()
-        ydl_config['cookiefile'] = temp_cookie_file.name
+        
+        ydl_config['cookiefile'] = temp_cookie_file.name  
 
     with yt_dlp.YoutubeDL(ydl_config) as ydl:
         try:
@@ -187,15 +190,16 @@ def search(q: str = Query(..., description="Search query to search YT for")):
         },
     }
 
-    cookie_data = os.getenv("YT_COOKIES")
+cookie_data = os.getenv("YT_COOKIES")
     temp_cookie_file = None
     if cookie_data:
-        print(f"COOKIE DATA TRUE: {cookie_data}")
         cookie_data = cookie_data.replace('\\n', '\n').replace('\\t', '\t')
+        print(f"DEBUG: Active Cookie Line Count -> {len(cookie_data.splitlines())}")
+        
         temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
         temp_cookie_file.write(cookie_data)
         temp_cookie_file.close()
-        ytdl_opts['cookiefile'] = temp_cookie_file.name
+        ydl_config['cookiefile'] = temp_cookie_file.name 
 
     try:
         with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
