@@ -1,39 +1,37 @@
-import tempfile
 import os
-from fastapi.concurrency import run_in_threadpool
-import yt_dlp
-import scraper
-from typing import Optional, List
-import scraper
-from fastapi import FastAPI, HTTPException, Query
-from pydantic import BaseModel
-import httpx
-from fastapi.responses import StreamingResponse
 import re
+import tempfile
+from typing import List, Optional
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import StreamingResponse
+import httpx
+import yt_dlp
+from pydantic import BaseModel
+
+import scraper
+
 app = FastAPI()
 
-
 class Trackscheme(BaseModel):
-    id:str
-    title:str
-    artist:str
+    id: str
+    title: str
+    artist: str
     image: Optional[str] = None
 
 class PlaylistResponse(BaseModel):
-    status:str
+    status: str
     playlist_name: str
     icon: Optional[str] = 'noicon'
     tracks: List[Trackscheme]
     owner: Optional[str] = "owner"
 
-
 class ErrorResponse(BaseModel):
     status: str
     errordetail: str
-    
 
 @app.post("/api/playlist/fetch")
-async def fetch_playlist(payload:dict):
+async def fetch_playlist(payload: dict):
     spotify_url = payload.get("url") 
     
     try:
@@ -59,6 +57,22 @@ async def fetch_playlist(payload:dict):
         )
 
 def get_audio_stream(url: str) -> dict:
+    ydl_config = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'no_warnings': True,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['tv_downgraded', 'android_vr', 'web_creator']
+            }
+        },
+        "http_headers": {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+        }
+    }
+
     cookie_data = os.getenv("YT_COOKIES")
     temp_cookie_file = None
     if cookie_data:
@@ -66,22 +80,6 @@ def get_audio_stream(url: str) -> dict:
         temp_cookie_file.write(cookie_data)
         temp_cookie_file.close()
         ydl_config['cookiefile'] = temp_cookie_file.name
-    ydl_config = {
-        'format':'bestaudio/best',
-        'quiet':True,
-        'no_warnings':True,
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['tv_downgraded', 'android_vr', 'web_creator']
-            }
-        },
-
-        "http_headers":{
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-        }
-    }
 
     with yt_dlp.YoutubeDL(ydl_config) as ydl:
         try:
@@ -92,7 +90,7 @@ def get_audio_stream(url: str) -> dict:
                 "title": info.get('title', 'audio_track'),
                 "headers": info.get('http_headers', {})
             }
-        except Exception as e :
+        except Exception as e:
             raise HTTPException(
                 status_code=400,
                 detail=f"Failed to extract yt metadata; {str(e)}"
@@ -101,10 +99,9 @@ def get_audio_stream(url: str) -> dict:
             if temp_cookie_file and os.path.exists(temp_cookie_file.name):
                 os.unlink(temp_cookie_file.name)
 
-
 @app.get("/api/download")
-async def download_audio_stream(url:str = Query(..., description="full youtube video link")):
-    data = await run_in_threadpool(get_audio_stream,url)
+async def download_audio_stream(url: str = Query(..., description="full youtube video link")):
+    data = await run_in_threadpool(get_audio_stream, url)
     stream_url = data["stream_url"]
     headers = data["headers"]
     timeout_config = httpx.Timeout(connect=15.0, read=None, write=30.0, pool=30.0)
@@ -150,7 +147,6 @@ async def download_audio_stream(url:str = Query(..., description="full youtube v
         "Connection": "keep-alive"
     }
 
-
     if total_bytes:
         _headers["Content-Length"] = total_bytes
 
@@ -178,13 +174,6 @@ def extract_video_id(result) -> Optional[str]:
 
 @app.get("/api/search")
 def search(q: str = Query(..., description="Search query to search YT for")):
-    cookie_data = os.getenv("YT_COOKIES")
-    temp_cookie_file = None
-    if cookie_data:
-        temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
-        temp_cookie_file.write(cookie_data)
-        temp_cookie_file.close()
-        ydl_config['cookiefile'] = temp_cookie_file.name
     ytdl_opts = {
         'quiet': True,
         'no_warnings': True,
@@ -195,6 +184,15 @@ def search(q: str = Query(..., description="Search query to search YT for")):
             }
         },
     }
+
+    cookie_data = os.getenv("YT_COOKIES")
+    temp_cookie_file = None
+    if cookie_data:
+        temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
+        temp_cookie_file.write(cookie_data)
+        temp_cookie_file.close()
+        ytdl_opts['cookiefile'] = temp_cookie_file.name
+
     try:
         with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
             result = ydl.extract_info(q, download=False)
