@@ -30,6 +30,10 @@ class ErrorResponse(BaseModel):
     status: str
     errordetail: str
 
+@app.get("/")
+def home_health_check():
+    return {"status": "online", "message": "Localify"}
+
 @app.post("/api/playlist/fetch")
 async def fetch_playlist(payload: dict):
     spotify_url = payload.get("url") 
@@ -73,17 +77,15 @@ def get_audio_stream(url: str) -> dict:
         }
     }
 
-cookie_data = os.getenv("YT_COOKIES")
+    cookie_data = os.getenv("YT_COOKIES")
     temp_cookie_file = None
     if cookie_data:
         cookie_data = cookie_data.replace('\\n', '\n').replace('\\t', '\t')
-        
         print(f"DEBUG: Active Cookie Line Count -> {len(cookie_data.splitlines())}")
         
         temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
         temp_cookie_file.write(cookie_data)
         temp_cookie_file.close()
-        
         ydl_config['cookiefile'] = temp_cookie_file.name  
 
     with yt_dlp.YoutubeDL(ydl_config) as ydl:
@@ -190,7 +192,7 @@ def search(q: str = Query(..., description="Search query to search YT for")):
         },
     }
 
-cookie_data = os.getenv("YT_COOKIES")
+    cookie_data = os.getenv("YT_COOKIES")
     temp_cookie_file = None
     if cookie_data:
         cookie_data = cookie_data.replace('\\n', '\n').replace('\\t', '\t')
@@ -199,7 +201,7 @@ cookie_data = os.getenv("YT_COOKIES")
         temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
         temp_cookie_file.write(cookie_data)
         temp_cookie_file.close()
-        ydl_config['cookiefile'] = temp_cookie_file.name 
+        ytdl_opts['cookiefile'] = temp_cookie_file.name 
 
     try:
         with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
