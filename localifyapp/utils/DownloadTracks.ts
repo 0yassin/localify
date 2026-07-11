@@ -10,6 +10,7 @@ import { GetDirectLink } from './GetDirectLink';
 import { searchYoutube } from './SearchYT';
 import { DOWNLOAD_CONCURRENCY, mapWithConcurrency, RESOLVE_CONCURRENCY } from './concurrency';
 import { withDbLock } from './dbMutex';
+import generateM3u from './generateM3u';
 
 export type ManifestItem = { trackId: string; title: string; directUrl: string; existingFilename?: string | null };
 type DownloadResult = { success: boolean; title: string };
@@ -237,6 +238,8 @@ export async function downloadPendingTracksForPlaylist(playlistId: string, folde
     const downloadResults = await mapWithConcurrency(urlManifest, DOWNLOAD_CONCURRENCY, (item) => downloadAndStore(item, folder));
     const downloadSuccesses = downloadResults.filter(r => r.success).length;
     const downloadFailures = downloadResults.filter(r => !r.success).length;
-
+    if (downloadSuccesses > 0) {
+        await generateM3u(playlistId, folder);
+    }
     return { resolveFailures, downloadFailures, downloadSuccesses };
 }
