@@ -112,7 +112,6 @@ export default function Playlistscreen() {
             <View>
                 
             </View>
-                <Pressable onPress={()=>{fetchtracks()}} className='bg-green-500 aspect-square h-10'><Text className='w-full h-full text-center'>Rel</Text></Pressable>
             </View>
 
             {loading ? (

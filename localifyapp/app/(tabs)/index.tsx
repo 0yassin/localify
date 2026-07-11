@@ -70,7 +70,6 @@ export default function TabOneScreen() {
           }
 
           setPlaylistTrackIds(grouped);
-          // setPlaylistDownloadCounts(downloadedCounts);
       } catch (error) {
           console.error('Failed to load local playlists:', error);
       }
@@ -214,7 +213,6 @@ export default function TabOneScreen() {
       <View className=''>
         <View className='w-full flex justify-between flex-row items-center'>
           <Text className='text-[25px] font-poppinsBold mb-2'>Synced playlists</Text>
-          <Pressable onPress={()=>{fetchPlaylists()}} className='bg-green-500 aspect-square h-10'><Text className='w-full h-full text-center'>Rel</Text></Pressable>
         </View>
         <View className='gap-3 flex flex-col'>
 
