@@ -44,19 +44,21 @@ const Track = React.memo(function Track({ Title, Downloaded, image, Artist, Prog
                 <View style={{ width: ICON_SIZE, height: ICON_SIZE }} className="items-center justify-center">
                     {Downloaded ? (
                         <View className="aspect-square h-[28px] w-[28px] rounded-full bg-[#1DB954]" />
-                    ) : Status === 'downloading' ? (
-                        <Pressable onPress={onPausePress}>
-                            <Image style={{ height: ICON_SIZE, width: ICON_SIZE, tintColor: '#161616' }} source={require("../assets/images/pause-icon.png")}/>
-                        </Pressable>
-                    ) : Status === 'paused' ? (
-                        <Pressable onPress={onResumePress}>
-                            <Image style={{ height: ICON_SIZE, width: ICON_SIZE, tintColor: '#161616' }} source={require("../assets/images/play-icon.png")}/>
-                        </Pressable>
-                    ) : (
-                        <Pressable onPress={onStartPress}>
-                            <Image style={{ height: ICON_SIZE, width: ICON_SIZE, tintColor: '#161616' }} source={require("../assets/images/download-icon.png")}/>
-                        </Pressable>
-                    )}
+                    ) : ''
+                    // ) : Status === 'downloading' ? (
+                    //     <Pressable onPress={onPausePress}>
+                    //         <Image style={{ height: ICON_SIZE, width: ICON_SIZE, tintColor: '#161616' }} source={require("../assets/images/pause-icon.png")}/>
+                    //     </Pressable>
+                    // ) : Status === 'paused' ? (
+                    //     <Pressable onPress={onResumePress}>
+                    //         <Image style={{ height: ICON_SIZE, width: ICON_SIZE, tintColor: '#161616' }} source={require("../assets/images/play-icon.png")}/>
+                    //     </Pressable>
+                    // ) : (
+                    //     <Pressable onPress={onStartPress}>
+                    //         <Image style={{ height: ICON_SIZE, width: ICON_SIZE, tintColor: '#161616' }} source={require("../assets/images/download-icon.png")}/>
+                    //     </Pressable>
+                    // )
+                    }
                 </View>
             </View>
         </View>
