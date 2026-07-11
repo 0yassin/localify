@@ -4,7 +4,8 @@ CREATE TABLE `playlists` (
 	`url` text NOT NULL,
 	`last_checked` text,
 	`icon` text,
-	`synced` integer DEFAULT true NOT NULL
+	`synced` integer DEFAULT true NOT NULL,
+	`m3u_uri` text
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `playlists_id_unique` ON `playlists` (`id`);--> statement-breakpoint

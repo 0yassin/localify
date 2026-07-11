@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "b34cd59f-09b0-40de-a1a7-a9d80728549e",
+  "id": "a25d3d75-13a8-400c-8d6c-4856c439e360",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "playlists": {
@@ -49,6 +49,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": true
+        },
+        "m3u_uri": {
+          "name": "m3u_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
