@@ -3,19 +3,49 @@
 Localify is an app designed to help you locally save your playlists on spotify, this is already a feature in spotify but it's premium only so this app tries to provide a similar experience for completely free!
 
 ## Screenshots
-![screenshot1](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_232626.jpg)
-![screenshot2](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233422.jpg)
-![screenshot3](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233503.jpg)
-![screenshot4](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233510.jpg)
-![screenshot5](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233518.jpg)
-![screenshot6](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233915.jpg)
-![screenshot7](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234146.jpg)
-![screenshot8](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234151.jpg)
-![screenshot9](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234709.jpg)
-![screenshot10](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234718.jpg)
 
-
-
+<table width="100%">
+  <tr>
+    <td width="50%" align="center">
+      <img src="https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_232626.jpg" width="100%">
+    </td>
+    <td width="50%" align="center">
+      <img src="https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233422.jpg" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233503.jpg" width="100%">
+    </td>
+    <td width="50%" align="center">
+      <img src="https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233510.jpg" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233518.jpg" width="100%">
+    </td>
+    <td width="50%" align="center">
+      <img src="https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233915.jpg" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234146.jpg" width="100%">
+    </td>
+    <td width="50%" align="center">
+      <img src="https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234151.jpg" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234709.jpg" width="100%">
+    </td>
+    <td width="50%" align="center">
+      <img src="https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234718.jpg" width="100%">
+    </td>
+  </tr>
+</table>
 
 
 ## How it works
