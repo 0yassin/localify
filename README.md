@@ -23,7 +23,8 @@ Localify is an app designed to help you locally save your playlists on spotify, 
 - react native with expo for the app
 - sqlite with drizzle for storage on the app
 - Fastapi for the backend
-- ytdlp for youtube searching and streaming the actual files 
+- ytdlp for youtube searching and streaming the actual files
+- the download on the app is handled by react native bg downloader
 
 ## Note 
 - the playlist size is capped at around 100 at the moment because of limitations in the spotify fetch approach
