@@ -35,6 +35,6 @@ Localify is an app designed to help you locally save your playlists on spotify, 
 - build the app using [EAS](https://docs.expo.dev/build/introduction/)
 
 ## Download
-you can download the app from the releases tab on github: []
+you can download the app from the releases tab on github: [here](https://github.com/0yassin/localify/releases/)
 
 ![banner](https://github.com/0yassin/localify/raw/refs/heads/main/banner.png)
