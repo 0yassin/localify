@@ -1,7 +1,22 @@
 # Localify
-![banner](https://github.com/0yassin/localify/raw/refs/heads/main/banner.png)
 ## Hi there! 
 Localify is an app designed to help you locally save your playlists on spotify, this is already a feature in spotify but it's premium only so this app tries to provide a similar experience for completely free!
+
+## Screenshots
+![screenshot1](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_232626.jpg)
+![screenshot2](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233422.jpg)
+![screenshot3](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233503.jpg)
+![screenshot4](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233510.jpg)
+![screenshot5](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233518.jpg)
+![screenshot6](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_233915.jpg)
+![screenshot7](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234146.jpg)
+![screenshot8](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234151.jpg)
+![screenshot9](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234709.jpg)
+![screenshot10](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot/Screenshot_20260712_234718.jpg)
+
+
+
+
 
 ## How it works
 - the server handles loading playlist and track data and downloads etc while the expo app acts as a front-end.
@@ -27,4 +42,4 @@ Localify is an app designed to help you locally save your playlists on spotify, 
 ## Download
 you can download the app from the releases tab on github: []
 
-![Screenshot from app](https://github.com/0yassin/localify/raw/refs/heads/main/screenshot.png)
+![banner](https://github.com/0yassin/localify/raw/refs/heads/main/banner.png)
