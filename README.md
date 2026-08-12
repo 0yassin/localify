@@ -19,6 +19,14 @@ Localify is an app designed to help you locally save your playlists on spotify, 
 
 </div>
 
+## Video demo
+<div style="display: flex; overflow-x: auto; gap: 12px;">
+
+<video src="https://raw.githubusercontent.com/0yassin/localify/main/Screenrecording_20260812_181507.mp4" width="250">
+<video src="https://raw.githubusercontent.com/0yassin/localify/main/Screenrecording_20260812_181200.mp4" width="250">
+</div>
+
+
 ## How it works
 - the server handles loading playlist and track data and downloads etc while the expo app acts as a front-end.
 - the server uses ytdlp to search for the title of the requested song and then extracts that audio and feeds it through the API for the expo app.
