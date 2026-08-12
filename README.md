@@ -21,9 +21,10 @@ Localify is an app designed to help you locally save your playlists on spotify, 
 
 ## Video demo
 <div style="display: flex; overflow-x: auto; gap: 12px;">
+ALSO IN THE ROOT DIRECTORY! IN CASE DISPLAY IS BROKEN srry got not time rn
 
-<video src="https://raw.githubusercontent.com/0yassin/localify/main/Screenrecording_20260812_181507.mp4" width="250">
-<video src="https://raw.githubusercontent.com/0yassin/localify/main/Screenrecording_20260812_181200.mp4" width="250">
+<img src="https://raw.githubusercontent.com/0yassin/localify/main/Screenrecording_20260812_181507.mp4" width="250">
+<img src="https://raw.githubusercontent.com/0yassin/localify/main/Screenrecording_20260812_181200.mp4" width="250">
 </div>
 
 
